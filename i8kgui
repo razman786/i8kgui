@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+#  Copyright (c) 2022, Dr Rahim Lakhoo, razman786@gmail.com.
+#
+# This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+# License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with this program. If not,
+# see <https://www.gnu.org/licenses/>.
+#
+
+import sys
+
+from pathlib import Path
+from PySide6 import QtCore
+from PySide6.QtCore import QSize
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox
+
+
+class I8kGui(QMainWindow):
+    def __init__(self):
+        super(I8kGui, self).__init__()
+        self.tray = None
+        self.tray_menu = None
+        self.first_load = True
+        self.monitor_interval = 1000  # TODO - make this a setting
+        self.monitorTimer = QtCore.QTimer(self)
+        self.monitorTimer.timeout.connect(self.refresh_monitor)
+        self.monitorTimer.setInterval(self.monitor_interval)
+        self.degree_sign = u'\N{DEGREE SIGN}'
+        self.cpu_temp = QAction("CPU Temp:            ")
+        self.left_fan_rpm = QAction("Left Fan RPM:     ")
+        self.right_fan_rpm = QAction("Right Fan RPM:     ")
+        self.left_fan_status = QAction("Left Fan Status:    ")
+        self.right_fan_status = QAction("Right Fan Status:  ")
+        self.load_sys_tray()
+
+    def load_sys_tray(self):
+        self.tray = QSystemTrayIcon(self)
+        if self.tray.isSystemTrayAvailable():
+            icon = QIcon(str(Path.home()) + "/.local/share/icons/i8kgui_icon.png")
+            if icon.pixmap(QSize(64, 64)).isNull():
+                icon = QIcon('icons/i8kgui_icon.png')
+            self.tray.setIcon(icon)
+
+            self.tray_menu = QMenu()
+            # workaround because tray activated only works with double click
+            self.tray.activated.connect(self.status)
+            self.tray_menu.aboutToShow.connect(self.monitor)
+            self.tray_menu.aboutToHide.connect(self.stop_monitor)
+
+            self.tray_menu.addAction(self.cpu_temp)
+            self.tray_menu.addAction(self.left_fan_rpm)
+            self.tray_menu.addAction(self.right_fan_rpm)
+            self.tray_menu.addAction(self.left_fan_status)
+            self.tray_menu.addAction(self.right_fan_status)
+            self.tray_menu.addSeparator()
+
+            # TODO - add settings dialog
+            # action_settings = self.tray_menu.addAction("Settings")
+            # action_settings.triggered.connect(self.settings)
+            action_quit = self.tray_menu.addAction("Quit")
+            action_quit.triggered.connect(app.quit)
+
+            self.tray.setContextMenu(self.tray_menu)
+            self.tray.setToolTip("i8kgui")
+            self.tray.setVisible(True)
+        else:
+            QMessageBox.critical(None, "i8kgui", "Unable to locate system tray on this system.")
+            sys.exit(1)
+
+    def read_proc(self):
+        try:
+            i8k_proc = open('/proc/i8k', 'r')
+        except IOError as e:
+            QMessageBox.critical(None, "i8kgui", f"Error cannot find i8k module. Please install/start i8kutils.\n\n{e}")
+            sys.exit(1)
+        else:
+            line = i8k_proc.readline()
+            i8k_proc.close()
+            split_line = line.split(' ')
+            self.cpu_temp.setText(f"CPU Temp:            {split_line[3]}{self.degree_sign}C")
+            self.left_fan_rpm.setText(f"Left Fan RPM:      {split_line[6]}")
+            self.right_fan_rpm.setText(f"Right Fan RPM:    {split_line[7]}")
+            self.left_fan_status.setText(f"Left Fan Status:    {split_line[4]}")
+            self.right_fan_status.setText(f"Right Fan Status:  {split_line[5]}")
+
+            self.tray.activated.emit(QSystemTrayIcon.Trigger)  # send fake single-click event as workaround
+
+    def status(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            if not self.monitorTimer.isActive():
+                if not self.first_load:
+                    self.monitorTimer.start()
+                else:
+                    self.first_load = False  # workaround to not start QTimer when tray is loaded first time
+
+    def monitor(self):
+        self.read_proc()
+
+    def refresh_monitor(self):
+        self.read_proc()
+
+    def stop_monitor(self):
+        if self.monitorTimer.isActive():
+            self.monitorTimer.stop()
+
+    def settings(self):
+        print("show settings")
+
+
+if __name__ == '__main__':
+    app = QApplication([])
+    app.setQuitOnLastWindowClosed(False)
+    tray = I8kGui()
+
+    app.exec()
