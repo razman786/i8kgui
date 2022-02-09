@@ -77,8 +77,8 @@ class I8kGui(QMainWindow):
         try:
             i8k_proc = open('/proc/i8k', 'r')
         except IOError as e:
-            QMessageBox.critical(None, "i8kgui", f"Error cannot find i8k module. Please install/start i8kutils.\n\n{e}")
-            sys.exit(1)
+            self.tray.showMessage("i8kgui", f"Error cannot find i8k module. Please install/start i8kutils.\n\n{e}",
+                                  QSystemTrayIcon.Critical, msecs=10000)
         else:
             line = i8k_proc.readline()
             i8k_proc.close()
