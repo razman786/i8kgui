@@ -1,7 +1,14 @@
 # i8kgui
-A system tray GUI for i8kutils.
+
+## Introduction
+
+A simple system tray GUI to display useful informaiton from i8kutils <https://github.com/vitorafsr/i8kutils>.
+
+![screenshot](https://user-images.githubusercontent.com/7116312/153235426-87a5ee40-73fa-4239-9edc-d241fa68901c.png)
 
 ## Prerequisites 
+
+This version has only been tested on Ubuntu 20.04.
 
 ### i8kutils
 
