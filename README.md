@@ -2,7 +2,7 @@
 
 ## Introduction
 
-A simple system tray GUI to display useful informaiton from i8kutils <https://github.com/vitorafsr/i8kutils>.
+A simple system tray GUI to display useful information from i8kutils <https://github.com/vitorafsr/i8kutils>.
 
 ![screenshot](https://user-images.githubusercontent.com/7116312/153235426-87a5ee40-73fa-4239-9edc-d241fa68901c.png)
 
