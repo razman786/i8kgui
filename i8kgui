@@ -32,11 +32,11 @@ class I8kGui(QMainWindow):
         self.monitorTimer.timeout.connect(self.refresh_monitor)
         self.monitorTimer.setInterval(self.monitor_interval)
         self.degree_sign = u'\N{DEGREE SIGN}'
-        self.cpu_temp = QAction("CPU Temp:            ")
-        self.left_fan_rpm = QAction("Left Fan RPM:     ")
-        self.right_fan_rpm = QAction("Right Fan RPM:     ")
-        self.left_fan_status = QAction("Left Fan Status:    ")
-        self.right_fan_status = QAction("Right Fan Status:  ")
+        self.cpu_temp = QAction("CPU Temp:                ")
+        self.left_fan_rpm = QAction("Left Fan RPM:          ")
+        self.right_fan_rpm = QAction("Right Fan RPM:       ")
+        self.left_fan_status = QAction("Left Fan Status:      ")
+        self.right_fan_status = QAction("Right Fan Status:   ")
         self.load_sys_tray()
 
     def load_sys_tray(self):
@@ -83,11 +83,11 @@ class I8kGui(QMainWindow):
             line = i8k_proc.readline()
             i8k_proc.close()
             split_line = line.split(' ')
-            self.cpu_temp.setText(f"CPU Temp:            {split_line[3]}{self.degree_sign}C")
-            self.left_fan_rpm.setText(f"Left Fan RPM:      {split_line[6]}")
-            self.right_fan_rpm.setText(f"Right Fan RPM:    {split_line[7]}")
-            self.left_fan_status.setText(f"Left Fan Status:    {split_line[4]}")
-            self.right_fan_status.setText(f"Right Fan Status:  {split_line[5]}")
+            self.cpu_temp.setText(f"CPU Temp:                {split_line[3]}{self.degree_sign}C")
+            self.left_fan_rpm.setText(f"Left Fan RPM:          {split_line[6]}")
+            self.right_fan_rpm.setText(f"Right Fan RPM:       {split_line[7]}")
+            self.left_fan_status.setText(f"Left Fan Status:      {split_line[4]}")
+            self.right_fan_status.setText(f"Right Fan Status:   {split_line[5]}")
 
             self.tray.activated.emit(QSystemTrayIcon.Trigger)  # send fake single-click event as workaround
 
