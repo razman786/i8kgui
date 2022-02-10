@@ -12,14 +12,13 @@
 # see <https://www.gnu.org/licenses/>.
 #
 
-import sys
-
 from pathlib import Path
+
 from PySide6 import QtCore
 from PySide6.QtCore import QSize, Slot, QSettings
 from PySide6.QtGui import QIcon, QAction, QScreen, Qt, QIntValidator
 from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton, \
-    QVBoxLayout, QCheckBox, QLineEdit
+    QCheckBox, QLineEdit, QLabel, QFormLayout
 
 
 class I8kGui(QMainWindow):
@@ -63,12 +62,28 @@ class I8kGui(QMainWindow):
 
         self.monitor_interval = int(self.settings.value('interval', 1000))
 
+    def always_collect(self, checked):
+        if checked == Qt.Checked:
+            self.monitor_interval = int(self._interval.text())
+            self.monitorTimer.setInterval(self.monitor_interval)
+            self.always_on = True
+            if not self.monitorTimer.isActive():
+                self.monitorTimer.start()
+            else:
+                self.monitorTimer.stop()
+                self.monitorTimer.start()
+        else:
+            self.always_on = False
+            if self.monitorTimer.isActive():
+                self.monitorTimer.stop()
+
     def save_dialog_settings(self):
-        self.monitor_interval = int(self._interval.text())
-        self.monitorTimer.setInterval(self.monitor_interval)
-        if self.monitorTimer.isActive():
-            self.monitorTimer.stop()
-            self.monitorTimer.start()
+        if self.monitor_interval != int(self._interval.text()):
+            self.monitor_interval = int(self._interval.text())
+            self.monitorTimer.setInterval(self.monitor_interval)
+            if self.monitorTimer.isActive():
+                self.monitorTimer.stop()
+                self.monitorTimer.start()
         self.save_settings()
         self.settings_dialog.close()
 
@@ -77,25 +92,29 @@ class I8kGui(QMainWindow):
         self.settings.setValue('interval', self.monitor_interval)
 
     def create_settings_dialog(self):
+        self._save.setMaximumWidth(100)
         self._always_on.setText("Collect statistics continuously")
         self._always_on.stateChanged.connect(self.always_collect)
+        _label = QLabel()
+        _label.setText("Monitoring Interval (milliseconds)")
         self._interval.setValidator(QIntValidator())
         self._interval.setMaxLength(6)
         self._interval.setText(str(self.monitor_interval))
 
         self._save.clicked.connect(self.save_dialog_settings)
-
-        v_layout = QVBoxLayout()
-        v_layout.addWidget(self._always_on)
-        v_layout.addWidget(self._interval)
-        v_layout.addWidget(self._save)
-        self.settings_dialog.setLayout(v_layout)
+        f_layout = QFormLayout()
+        f_layout.addRow(self._always_on)
+        f_layout.addRow(" ", None)
+        f_layout.addRow("Monitoring Interval (milliseconds):", self._interval)
+        f_layout.addRow(" ", None)
+        f_layout.addRow(self._save)
+        self.settings_dialog.setLayout(f_layout)
 
         # set dialog geometry
         self.settings_dialog.setWindowTitle("Settings")
         self.settings_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
-        self.settings_dialog.setFixedWidth(250)
-        self.settings_dialog.setFixedHeight(400)
+        self.settings_dialog.setMaximumWidth(400)
+        self.settings_dialog.setMaximumWidth(400)
         center_point = QScreen.availableGeometry(QApplication.primaryScreen()).center()
         fg = self.settings_dialog.frameGeometry()
         fg.moveCenter(center_point)
@@ -188,16 +207,6 @@ class I8kGui(QMainWindow):
 
     def show_settings(self):
         self.settings_dialog.show()
-
-    def always_collect(self, checked):
-        if checked == Qt.Checked:
-            self.always_on = True
-            if not self.monitorTimer.isActive():
-                self.monitorTimer.start()
-        else:
-            self.always_on = False
-            if self.monitorTimer.isActive():
-                self.monitorTimer.stop()
 
 
 if __name__ == '__main__':
