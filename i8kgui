@@ -17,20 +17,26 @@ import sys
 from pathlib import Path
 from PySide6 import QtCore
 from PySide6.QtCore import QSize, Slot, QSettings
-from PySide6.QtGui import QIcon, QAction
-from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton
+from PySide6.QtGui import QIcon, QAction, QScreen, Qt
+from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton, \
+    QVBoxLayout, QCheckBox
 
 
 class I8kGui(QMainWindow):
     def __init__(self):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
+        self._always_on = QCheckBox()
+        self.settings_dialog = QDialog()
+        self._save = QPushButton("Save", self.settings_dialog)
+        self.create_settings_dialog()
         self.tray = None
         self.tray_menu = None
         self.first_load = True
         self.critical_error = False
-        self.always_on = bool(self.settings.value('always_on', False))
-        self.monitor_interval = int(self.settings.value('interval', 1000))
+        self.always_on = False
+        self.monitor_interval = 1000
+        self.load_settings()
         self.monitorTimer = QtCore.QTimer(self)
         self.monitorTimer.timeout.connect(self.refresh_monitor)
         self.monitorTimer.setInterval(self.monitor_interval)
@@ -40,13 +46,50 @@ class I8kGui(QMainWindow):
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
         self.left_fan_status = QAction("Left Fan Status:      ")
         self.right_fan_status = QAction("Right Fan Status:   ")
-        self.settings_dialog = QDialog()
         self.load_sys_tray()
 
     def close_app(self):
+        self.save_settings()
+        app.quit()
+
+    def load_settings(self):
+        if self.settings.value('always_on').lower() == 'true':
+            self.always_on = True
+            self._always_on.setCheckState(Qt.Checked)
+        else:
+            self.always_on = False
+            self._always_on.setCheckState(Qt.Unchecked)
+
+        self.monitor_interval = int(self.settings.value('interval', 1000))
+
+    def save_dialog_settings(self):
+        self.save_settings()
+        self.settings_dialog.close()
+
+    def save_settings(self):
         self.settings.setValue('always_on', self.always_on)
         self.settings.setValue('interval', self.monitor_interval)
-        app.quit()
+
+    def create_settings_dialog(self):
+        self._always_on.setText("Collect statistics continuously")
+        self._always_on.stateChanged.connect(self.always_collect)
+
+        self._save.clicked.connect(self.save_dialog_settings)
+
+        v_layout = QVBoxLayout()
+        v_layout.addWidget(self._always_on)
+        v_layout.addWidget(self._save)
+        self.settings_dialog.setLayout(v_layout)
+
+        # set dialog geometry
+        self.settings_dialog.setWindowTitle("Settings")
+        self.settings_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.settings_dialog.setFixedWidth(250)
+        self.settings_dialog.setFixedHeight(400)
+        center_point = QScreen.availableGeometry(QApplication.primaryScreen()).center()
+        fg = self.settings_dialog.frameGeometry()
+        fg.moveCenter(center_point)
+        self.settings_dialog.move(fg.topLeft())
 
     def load_sys_tray(self):
         self.tray = QSystemTrayIcon(self)
@@ -129,16 +172,24 @@ class I8kGui(QMainWindow):
         self.read_proc()
 
     def stop_monitor(self):
-        if self.monitorTimer.isActive() and not self.always_on:
-            self.monitorTimer.stop()
+        if not self.always_on:
+            if self.monitorTimer.isActive():
+                self.monitorTimer.stop()
 
     def show_settings(self):
-        _save = QPushButton("Save", self.settings_dialog)
-        _save.move(50, 50)
-        self.settings_dialog.setWindowTitle("Settings")
-        self.settings_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
         self.settings_dialog.show()
-        print("show settings")
+
+    def always_collect(self, checked):
+        if checked == Qt.Checked:
+            self.always_on = True
+            print(self.always_on)
+            if not self.monitorTimer.isActive():
+                self.monitorTimer.start()
+        else:
+            self.always_on = False
+            if self.monitorTimer.isActive():
+                self.monitorTimer.stop()
+            print(self.always_on)
 
 
 if __name__ == '__main__':
