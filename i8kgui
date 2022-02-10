@@ -30,12 +30,19 @@ class I8kGui(QMainWindow):
         self.always_on_checkbox = QCheckBox()
         self.interval_input = QLineEdit()
         self.settings_dialog = QDialog()
+        self.info_dialog = QDialog()
         self.save_button = QPushButton("Save", self.settings_dialog)
+        self.i8k_format_version = QLabel("1")
+        self.bios_version = QLabel("1")
+        self.service_tag = QLabel("N/A")
+        self.power_status = QLabel("N/A")
+        self.button_status = QLabel("N/A")
         self.load_settings()
         self.monitorTimer = QtCore.QTimer(self)
         self.monitorTimer.timeout.connect(self.refresh_monitor)
         self.monitorTimer.setInterval(self.monitor_interval)
         self.create_settings_dialog()
+        self.create_info_dialog()
         self.tray = None
         self.tray_menu = None
         self.first_load = True
@@ -91,6 +98,44 @@ class I8kGui(QMainWindow):
         self.save_settings()
         self.settings_dialog.close()
 
+    def close_info_dialog(self):
+        self.info_dialog.close()
+
+    def create_info_dialog(self):
+        close_button = QPushButton("close", self.info_dialog)
+        close_button.setMaximumWidth(100)
+        close_button.clicked.connect(self.close_info_dialog)
+
+        f_layout = QFormLayout()
+        f_layout.addRow("i8k Format Version: ", self.i8k_format_version)
+        f_layout.addRow("BIOS Version: ", self.bios_version)
+        f_layout.addRow("Service Tag: ", self.service_tag)
+        f_layout.addRow("A/C Power Supply: ", self.power_status)
+        f_layout.addRow("Button Status: ", self.button_status)
+        f_layout.addRow(" ", None)
+        f_layout.addWidget(close_button)
+        self.info_dialog.setLayout(f_layout)
+
+        # set dialog geometry
+        self.info_dialog.setWindowTitle("Settings")
+        self.info_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.info_dialog.setMaximumWidth(400)
+        self.info_dialog.setMaximumHeight(200)
+        center_point = QScreen.availableGeometry(QApplication.primaryScreen()).center()
+        fg = self.info_dialog.frameGeometry()
+        fg.moveCenter(center_point)
+        self.info_dialog.move(fg.topLeft())
+
+        # set dialog geometry
+        self.info_dialog.setWindowTitle("Information")
+        self.info_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.info_dialog.setMaximumWidth(400)
+        self.info_dialog.setMaximumHeight(200)
+        center_point = QScreen.availableGeometry(QApplication.primaryScreen()).center()
+        fg = self.info_dialog.frameGeometry()
+        fg.moveCenter(center_point)
+        self.info_dialog.move(fg.topLeft())
+
     def create_settings_dialog(self):
         self.save_button.setMaximumWidth(100)
         self.always_on_checkbox.setText("Collect statistics continuously")
@@ -141,7 +186,9 @@ class I8kGui(QMainWindow):
             self.tray_menu.addAction(self.right_fan_status)
             self.tray_menu.addSeparator()
 
-            # add settings and quit menu items
+            # add info, settings and quit menu items
+            action_info = self.tray_menu.addAction("Information")
+            action_info.triggered.connect(self.show_info)
             action_settings = self.tray_menu.addAction("Settings")
             action_settings.triggered.connect(self.show_settings)
             action_quit = self.tray_menu.addAction("Quit")
@@ -179,6 +226,12 @@ class I8kGui(QMainWindow):
                 self.left_fan_status.setText(f"Left Fan Status:      {split_line[4]}")
                 self.right_fan_status.setText(f"Right Fan Status:   {split_line[5]}")
 
+                self.i8k_format_version.setText(split_line[0])
+                self.bios_version.setText(split_line[1])
+                self.service_tag.setText(split_line[2])
+                self.power_status.setText(split_line[8])
+                self.button_status.setText(split_line[9])
+
                 self.tray.activated.emit(QSystemTrayIcon.Trigger)  # send fake single-click event as workaround
 
     def status(self, reason):
@@ -204,6 +257,9 @@ class I8kGui(QMainWindow):
 
     def show_settings(self):
         self.settings_dialog.show()
+
+    def show_info(self):
+        self.info_dialog.show()
 
 
 if __name__ == '__main__':
