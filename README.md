@@ -28,7 +28,7 @@ Please install and configure i8kutils from https://github.com/vitorafsr/i8kutils
 
 ## Issues and requests
 
-Please open an issue [here](https://github.com/razman786/i8kutils/issues).
+Please open an issue [here](https://github.com/razman786/i8kgui/issues).
 
 ## Credits
 
