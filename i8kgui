@@ -16,7 +16,7 @@ from pathlib import Path
 
 from PySide6 import QtCore
 from PySide6.QtCore import QSize, Slot, QSettings
-from PySide6.QtGui import QIcon, QAction, QScreen, Qt, QIntValidator
+from PySide6.QtGui import QIcon, QAction, QScreen, Qt, QIntValidator, QPalette, QColor
 from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton, \
     QCheckBox, QLineEdit, QLabel, QFormLayout
 
@@ -214,6 +214,39 @@ if __name__ == '__main__':
     app.setOrganizationName("i8kgui")
     app.setApplicationName("i8kgui")
     app.setApplicationVersion("0.2")
+
+    # setup Dark Mode QPalette - initial setup
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    palette.setColor(QPalette.WindowText, Qt.white)
+    palette.setColor(QPalette.Light, QColor(68, 68, 68))
+    palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    palette.setColor(QPalette.ToolTipBase, Qt.white)
+    palette.setColor(QPalette.ToolTipText, Qt.black)
+    palette.setColor(QPalette.Text, Qt.white)
+    palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    palette.setColor(QPalette.ButtonText, Qt.white)
+    palette.setColor(QPalette.BrightText, Qt.red)
+    palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    palette.setColor(QPalette.Highlight, QColor(42, 130, 218, 192))
+    palette.setColor(QPalette.HighlightedText, Qt.white)
+
+    # setup Dark Mode disabled QPalette
+    palette.setColor(QPalette.Disabled, QPalette.Window, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.WindowText, QColor(255, 255, 255, 128))
+    palette.setColor(QPalette.Disabled, QPalette.Base, QColor(68, 68, 68))
+    palette.setColor(QPalette.Disabled, QPalette.Text, QColor(255, 255, 255, 128))
+    palette.setColor(QPalette.Disabled, QPalette.Button, QColor(53, 53, 53, 128))
+    palette.setColor(QPalette.Disabled, QPalette.ButtonText, QColor(255, 255, 255, 128))
+    palette.setColor(QPalette.Disabled, QPalette.BrightText, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.Link, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.Highlight, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.HighlightedText, Qt.black)
+
+    # add Dark Mode to i8kgui
+    app.setPalette(palette)
+
     app.setQuitOnLastWindowClosed(False)
     tray = I8kGui()
 
