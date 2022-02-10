@@ -16,7 +16,7 @@ import sys
 
 from pathlib import Path
 from PySide6 import QtCore
-from PySide6.QtCore import QSize, Slot
+from PySide6.QtCore import QSize, Slot, QSettings
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox
 
@@ -24,11 +24,13 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu,
 class I8kGui(QMainWindow):
     def __init__(self):
         super(I8kGui, self).__init__()
+        self.settings = QSettings()
         self.tray = None
         self.tray_menu = None
         self.first_load = True
         self.critical_error = False
-        self.monitor_interval = 1000  # TODO - make this a setting
+        self.always_on = bool(self.settings.value('always_on', False))
+        self.monitor_interval = int(self.settings.value('interval', 1000))
         self.monitorTimer = QtCore.QTimer(self)
         self.monitorTimer.timeout.connect(self.refresh_monitor)
         self.monitorTimer.setInterval(self.monitor_interval)
@@ -39,6 +41,11 @@ class I8kGui(QMainWindow):
         self.left_fan_status = QAction("Left Fan Status:      ")
         self.right_fan_status = QAction("Right Fan Status:   ")
         self.load_sys_tray()
+
+    def close_app(self):
+        self.settings.setValue('always_on', self.always_on)
+        self.settings.setValue('interval', self.monitor_interval)
+        app.quit()
 
     def load_sys_tray(self):
         self.tray = QSystemTrayIcon(self)
@@ -68,18 +75,18 @@ class I8kGui(QMainWindow):
             # action_settings = self.tray_menu.addAction("Settings")
             # action_settings.triggered.connect(self.settings)
             action_quit = self.tray_menu.addAction("Quit")
-            action_quit.triggered.connect(app.quit)
+            action_quit.triggered.connect(self.close_app)
 
             self.tray.setContextMenu(self.tray_menu)
             self.tray.setToolTip("i8kgui")
             self.tray.setVisible(True)
         else:
             QMessageBox.critical(None, "i8kgui", "Unable to locate system tray on this system.")
-            sys.exit(1)
+            self.close_app()
 
     @Slot()
     def message_clicked(self):
-        sys.exit(1)
+        self.close_app()
 
     def read_proc(self):
         # read i8k values from /proc then update the system tray
@@ -130,6 +137,9 @@ class I8kGui(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication([])
+    app.setOrganizationName("i8kgui")
+    app.setApplicationName("i8kgui")
+    app.setApplicationVersion("0.2")
     app.setQuitOnLastWindowClosed(False)
     tray = I8kGui()
 
