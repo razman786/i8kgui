@@ -12,28 +12,34 @@
 # see <https://www.gnu.org/licenses/>.
 #
 
-import sys
-
 from pathlib import Path
+
 from PySide6 import QtCore
 from PySide6.QtCore import QSize, Slot, QSettings
-from PySide6.QtGui import QIcon, QAction
-from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox
+from PySide6.QtGui import QIcon, QAction, QScreen, Qt, QIntValidator, QPalette, QColor
+from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton, \
+    QCheckBox, QLineEdit, QLabel, QFormLayout
 
 
 class I8kGui(QMainWindow):
     def __init__(self):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
+        self.always_on = False
+        self.monitor_interval = 1000
+        self._always_on = QCheckBox()
+        self._interval = QLineEdit()
+        self.settings_dialog = QDialog()
+        self._save = QPushButton("Save", self.settings_dialog)
+        self.load_settings()
+        self.monitorTimer = QtCore.QTimer(self)
+        self.monitorTimer.timeout.connect(self.refresh_monitor)
+        self.monitorTimer.setInterval(self.monitor_interval)
+        self.create_settings_dialog()
         self.tray = None
         self.tray_menu = None
         self.first_load = True
         self.critical_error = False
-        self.always_on = bool(self.settings.value('always_on', False))
-        self.monitor_interval = int(self.settings.value('interval', 1000))
-        self.monitorTimer = QtCore.QTimer(self)
-        self.monitorTimer.timeout.connect(self.refresh_monitor)
-        self.monitorTimer.setInterval(self.monitor_interval)
         self.degree_sign = u'\N{DEGREE SIGN}'
         self.cpu_temp = QAction("CPU Temp:                ")
         self.left_fan_rpm = QAction("Left Fan RPM:          ")
@@ -43,9 +49,76 @@ class I8kGui(QMainWindow):
         self.load_sys_tray()
 
     def close_app(self):
+        self.save_settings()
+        app.quit()
+
+    def load_settings(self):
+        if self.settings.value('always_on').lower() == 'true':
+            self.always_on = True
+            self._always_on.setCheckState(Qt.Checked)
+        else:
+            self.always_on = False
+            self._always_on.setCheckState(Qt.Unchecked)
+
+        self.monitor_interval = int(self.settings.value('interval', 1000))
+
+    def save_settings(self):
         self.settings.setValue('always_on', self.always_on)
         self.settings.setValue('interval', self.monitor_interval)
-        app.quit()
+
+    def always_collect(self, checked):
+        if checked == Qt.Checked:
+            self.monitor_interval = int(self._interval.text())
+            self.monitorTimer.setInterval(self.monitor_interval)
+            self.always_on = True
+            if not self.monitorTimer.isActive():
+                self.monitorTimer.start()
+            else:
+                self.monitorTimer.stop()
+                self.monitorTimer.start()
+        else:
+            self.always_on = False
+            if self.monitorTimer.isActive():
+                self.monitorTimer.stop()
+
+    def save_dialog_settings(self):
+        if self.monitor_interval != int(self._interval.text()):
+            self.monitor_interval = int(self._interval.text())
+            self.monitorTimer.setInterval(self.monitor_interval)
+            if self.monitorTimer.isActive():
+                self.monitorTimer.stop()
+                self.monitorTimer.start()
+        self.save_settings()
+        self.settings_dialog.close()
+
+    def create_settings_dialog(self):
+        self._save.setMaximumWidth(100)
+        self._always_on.setText("Collect statistics continuously")
+        self._always_on.stateChanged.connect(self.always_collect)
+        _label = QLabel()
+        _label.setText("Monitoring Interval (milliseconds)")
+        self._interval.setValidator(QIntValidator())
+        self._interval.setMaxLength(6)
+        self._interval.setText(str(self.monitor_interval))
+
+        self._save.clicked.connect(self.save_dialog_settings)
+        f_layout = QFormLayout()
+        f_layout.addRow(self._always_on)
+        f_layout.addRow(" ", None)
+        f_layout.addRow("Monitoring Interval (milliseconds):", self._interval)
+        f_layout.addRow(" ", None)
+        f_layout.addRow(self._save)
+        self.settings_dialog.setLayout(f_layout)
+
+        # set dialog geometry
+        self.settings_dialog.setWindowTitle("Settings")
+        self.settings_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.settings_dialog.setMaximumWidth(400)
+        self.settings_dialog.setMaximumWidth(400)
+        center_point = QScreen.availableGeometry(QApplication.primaryScreen()).center()
+        fg = self.settings_dialog.frameGeometry()
+        fg.moveCenter(center_point)
+        self.settings_dialog.move(fg.topLeft())
 
     def load_sys_tray(self):
         self.tray = QSystemTrayIcon(self)
@@ -70,10 +143,9 @@ class I8kGui(QMainWindow):
             self.tray_menu.addAction(self.right_fan_status)
             self.tray_menu.addSeparator()
 
-            # TODO - add settings dialog
             # add settings and quit menu items
-            # action_settings = self.tray_menu.addAction("Settings")
-            # action_settings.triggered.connect(self.settings)
+            action_settings = self.tray_menu.addAction("Settings")
+            action_settings.triggered.connect(self.show_settings)
             action_quit = self.tray_menu.addAction("Quit")
             action_quit.triggered.connect(self.close_app)
 
@@ -128,11 +200,12 @@ class I8kGui(QMainWindow):
         self.read_proc()
 
     def stop_monitor(self):
-        if self.monitorTimer.isActive():
-            self.monitorTimer.stop()
+        if not self.always_on:
+            if self.monitorTimer.isActive():
+                self.monitorTimer.stop()
 
-    def settings(self):
-        print("show settings")
+    def show_settings(self):
+        self.settings_dialog.show()
 
 
 if __name__ == '__main__':
@@ -140,6 +213,39 @@ if __name__ == '__main__':
     app.setOrganizationName("i8kgui")
     app.setApplicationName("i8kgui")
     app.setApplicationVersion("0.2")
+
+    # setup Dark Mode QPalette - initial setup
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    palette.setColor(QPalette.WindowText, Qt.white)
+    palette.setColor(QPalette.Light, QColor(68, 68, 68))
+    palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    palette.setColor(QPalette.ToolTipBase, Qt.white)
+    palette.setColor(QPalette.ToolTipText, Qt.black)
+    palette.setColor(QPalette.Text, Qt.white)
+    palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    palette.setColor(QPalette.ButtonText, Qt.white)
+    palette.setColor(QPalette.BrightText, Qt.red)
+    palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    palette.setColor(QPalette.Highlight, QColor(42, 130, 218, 192))
+    palette.setColor(QPalette.HighlightedText, Qt.white)
+
+    # setup Dark Mode disabled QPalette
+    palette.setColor(QPalette.Disabled, QPalette.Window, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.WindowText, QColor(255, 255, 255, 128))
+    palette.setColor(QPalette.Disabled, QPalette.Base, QColor(68, 68, 68))
+    palette.setColor(QPalette.Disabled, QPalette.Text, QColor(255, 255, 255, 128))
+    palette.setColor(QPalette.Disabled, QPalette.Button, QColor(53, 53, 53, 128))
+    palette.setColor(QPalette.Disabled, QPalette.ButtonText, QColor(255, 255, 255, 128))
+    palette.setColor(QPalette.Disabled, QPalette.BrightText, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.Link, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.Highlight, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.HighlightedText, Qt.black)
+
+    # add Dark Mode to i8kgui
+    app.setPalette(palette)
+
     app.setQuitOnLastWindowClosed(False)
     tray = I8kGui()
 
