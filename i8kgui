@@ -18,7 +18,7 @@ from pathlib import Path
 from PySide6 import QtCore
 from PySide6.QtCore import QSize, Slot, QSettings
 from PySide6.QtGui import QIcon, QAction
-from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton
 
 
 class I8kGui(QMainWindow):
@@ -40,6 +40,7 @@ class I8kGui(QMainWindow):
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
         self.left_fan_status = QAction("Left Fan Status:      ")
         self.right_fan_status = QAction("Right Fan Status:   ")
+        self.settings_dialog = QDialog()
         self.load_sys_tray()
 
     def close_app(self):
@@ -72,8 +73,8 @@ class I8kGui(QMainWindow):
 
             # TODO - add settings dialog
             # add settings and quit menu items
-            # action_settings = self.tray_menu.addAction("Settings")
-            # action_settings.triggered.connect(self.settings)
+            action_settings = self.tray_menu.addAction("Settings")
+            action_settings.triggered.connect(self.show_settings)
             action_quit = self.tray_menu.addAction("Quit")
             action_quit.triggered.connect(self.close_app)
 
@@ -128,10 +129,15 @@ class I8kGui(QMainWindow):
         self.read_proc()
 
     def stop_monitor(self):
-        if self.monitorTimer.isActive():
+        if self.monitorTimer.isActive() and not self.always_on:
             self.monitorTimer.stop()
 
-    def settings(self):
+    def show_settings(self):
+        _save = QPushButton("Save", self.settings_dialog)
+        _save.move(50, 50)
+        self.settings_dialog.setWindowTitle("Settings")
+        self.settings_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.settings_dialog.show()
         print("show settings")
 
 
