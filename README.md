@@ -2,15 +2,19 @@
 
 ## Introduction
 
-A simple system tray GUI to display useful information from [i8kutils](https://github.com/vitorafsr/i8kutils).
+A simple system tray GUI to display useful information from [i8kutils](https://github.com/vitorafsr/i8kutils) - created
+as a quick hack for my own needs.
 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/7116312/153235426-87a5ee40-73fa-4239-9edc-d241fa68901c.png" width="200" />
 </p>
 
+i8kgui uses i8kutils to gather information such as CPU temperature and fan speeds. It attempts to only
+update GUI values when active, but does have an option to collect information continuously.
+
 ## Prerequisites 
 
-This version has only been tested on Ubuntu 20.04.
+This version has only been tested on Ubuntu 20.04 and with a Dell laptop.
 
 ### i8kutils
 
