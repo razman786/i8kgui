@@ -31,15 +31,15 @@ class I8kGui(QMainWindow):
         self._interval = QLineEdit()
         self.settings_dialog = QDialog()
         self._save = QPushButton("Save", self.settings_dialog)
+        self.load_settings()
+        self.monitorTimer = QtCore.QTimer(self)
+        self.monitorTimer.timeout.connect(self.refresh_monitor)
+        self.monitorTimer.setInterval(self.monitor_interval)
         self.create_settings_dialog()
         self.tray = None
         self.tray_menu = None
         self.first_load = True
         self.critical_error = False
-        self.load_settings()
-        self.monitorTimer = QtCore.QTimer(self)
-        self.monitorTimer.timeout.connect(self.refresh_monitor)
-        self.monitorTimer.setInterval(self.monitor_interval)
         self.degree_sign = u'\N{DEGREE SIGN}'
         self.cpu_temp = QAction("CPU Temp:                ")
         self.left_fan_rpm = QAction("Left Fan RPM:          ")
@@ -61,6 +61,10 @@ class I8kGui(QMainWindow):
             self._always_on.setCheckState(Qt.Unchecked)
 
         self.monitor_interval = int(self.settings.value('interval', 1000))
+
+    def save_settings(self):
+        self.settings.setValue('always_on', self.always_on)
+        self.settings.setValue('interval', self.monitor_interval)
 
     def always_collect(self, checked):
         if checked == Qt.Checked:
@@ -86,10 +90,6 @@ class I8kGui(QMainWindow):
                 self.monitorTimer.start()
         self.save_settings()
         self.settings_dialog.close()
-
-    def save_settings(self):
-        self.settings.setValue('always_on', self.always_on)
-        self.settings.setValue('interval', self.monitor_interval)
 
     def create_settings_dialog(self):
         self._save.setMaximumWidth(100)
@@ -143,7 +143,6 @@ class I8kGui(QMainWindow):
             self.tray_menu.addAction(self.right_fan_status)
             self.tray_menu.addSeparator()
 
-            # TODO - add settings dialog
             # add settings and quit menu items
             action_settings = self.tray_menu.addAction("Settings")
             action_settings.triggered.connect(self.show_settings)
