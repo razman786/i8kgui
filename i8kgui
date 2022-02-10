@@ -27,10 +27,10 @@ class I8kGui(QMainWindow):
         self.settings = QSettings()
         self.always_on = False
         self.monitor_interval = 1000
-        self._always_on = QCheckBox()
-        self._interval = QLineEdit()
+        self.always_on_checkbox = QCheckBox()
+        self.interval_input = QLineEdit()
         self.settings_dialog = QDialog()
-        self._save = QPushButton("Save", self.settings_dialog)
+        self.save_button = QPushButton("Save", self.settings_dialog)
         self.load_settings()
         self.monitorTimer = QtCore.QTimer(self)
         self.monitorTimer.timeout.connect(self.refresh_monitor)
@@ -55,10 +55,10 @@ class I8kGui(QMainWindow):
     def load_settings(self):
         if self.settings.value('always_on').lower() == 'true':
             self.always_on = True
-            self._always_on.setCheckState(Qt.Checked)
+            self.always_on_checkbox.setCheckState(Qt.Checked)
         else:
             self.always_on = False
-            self._always_on.setCheckState(Qt.Unchecked)
+            self.always_on_checkbox.setCheckState(Qt.Unchecked)
 
         self.monitor_interval = int(self.settings.value('interval', 1000))
 
@@ -68,7 +68,7 @@ class I8kGui(QMainWindow):
 
     def always_collect(self, checked):
         if checked == Qt.Checked:
-            self.monitor_interval = int(self._interval.text())
+            self.monitor_interval = int(self.interval_input.text())
             self.monitorTimer.setInterval(self.monitor_interval)
             self.always_on = True
             if not self.monitorTimer.isActive():
@@ -82,8 +82,8 @@ class I8kGui(QMainWindow):
                 self.monitorTimer.stop()
 
     def save_dialog_settings(self):
-        if self.monitor_interval != int(self._interval.text()):
-            self.monitor_interval = int(self._interval.text())
+        if self.monitor_interval != int(self.interval_input.text()):
+            self.monitor_interval = int(self.interval_input.text())
             self.monitorTimer.setInterval(self.monitor_interval)
             if self.monitorTimer.isActive():
                 self.monitorTimer.stop()
@@ -92,29 +92,27 @@ class I8kGui(QMainWindow):
         self.settings_dialog.close()
 
     def create_settings_dialog(self):
-        self._save.setMaximumWidth(100)
-        self._always_on.setText("Collect statistics continuously")
-        self._always_on.stateChanged.connect(self.always_collect)
-        _label = QLabel()
-        _label.setText("Monitoring Interval (milliseconds)")
-        self._interval.setValidator(QIntValidator())
-        self._interval.setMaxLength(6)
-        self._interval.setText(str(self.monitor_interval))
+        self.save_button.setMaximumWidth(100)
+        self.always_on_checkbox.setText("Collect statistics continuously")
+        self.always_on_checkbox.stateChanged.connect(self.always_collect)
+        self.interval_input.setValidator(QIntValidator())
+        self.interval_input.setMaxLength(6)
+        self.interval_input.setText(str(self.monitor_interval))
 
-        self._save.clicked.connect(self.save_dialog_settings)
+        self.save_button.clicked.connect(self.save_dialog_settings)
         f_layout = QFormLayout()
-        f_layout.addRow(self._always_on)
+        f_layout.addRow(self.always_on_checkbox)
         f_layout.addRow(" ", None)
-        f_layout.addRow("Monitoring Interval (milliseconds):", self._interval)
+        f_layout.addRow("Monitoring Interval (milliseconds):", self.interval_input)
         f_layout.addRow(" ", None)
-        f_layout.addRow(self._save)
+        f_layout.addRow(self.save_button)
         self.settings_dialog.setLayout(f_layout)
 
         # set dialog geometry
         self.settings_dialog.setWindowTitle("Settings")
         self.settings_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
         self.settings_dialog.setMaximumWidth(400)
-        self.settings_dialog.setMaximumWidth(400)
+        self.settings_dialog.setMaximumHeight(200)
         center_point = QScreen.availableGeometry(QApplication.primaryScreen()).center()
         fg = self.settings_dialog.frameGeometry()
         fg.moveCenter(center_point)
