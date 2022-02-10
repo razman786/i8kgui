@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 from PySide6 import QtCore
 from PySide6.QtCore import QSize, Slot, QSettings
-from PySide6.QtGui import QIcon, QAction, QScreen, Qt
+from PySide6.QtGui import QIcon, QAction, QScreen, Qt, QIntValidator
 from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton, \
     QVBoxLayout, QCheckBox, QLineEdit
 
@@ -65,6 +65,10 @@ class I8kGui(QMainWindow):
 
     def save_dialog_settings(self):
         self.monitor_interval = int(self._interval.text())
+        self.monitorTimer.setInterval(self.monitor_interval)
+        if self.monitorTimer.isActive():
+            self.monitorTimer.stop()
+            self.monitorTimer.start()
         self.save_settings()
         self.settings_dialog.close()
 
@@ -75,6 +79,8 @@ class I8kGui(QMainWindow):
     def create_settings_dialog(self):
         self._always_on.setText("Collect statistics continuously")
         self._always_on.stateChanged.connect(self.always_collect)
+        self._interval.setValidator(QIntValidator())
+        self._interval.setMaxLength(6)
         self._interval.setText(str(self.monitor_interval))
 
         self._save.clicked.connect(self.save_dialog_settings)
