@@ -20,14 +20,18 @@ Please install and configure i8kutils from https://github.com/vitorafsr/i8kutils
 
 ### Stable
 
-`git clone https://github.com/razman786/i8kgui`
-`python3 setup.py install --user`
+```
+git clone https://github.com/razman786/i8kgui
+python3 setup.py install --user
+```
 
 ### Development
 
-`git clone https://github.com/razman786/i8kgui`
-`git checkout development`
-`python3 setup.py install --user`
+```
+git clone https://github.com/razman786/i8kgui
+git checkout development && git pull
+python3 setup.py install --user
+```
 
 ## Issues and requests
 
