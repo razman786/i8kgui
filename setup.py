@@ -9,6 +9,7 @@ requirements = [
 
 scripts = [
     'i8kgui',
+    'DellSmbios.py',
 ]
 
 package_data = {'i8kgui': ['icons/*.png']}
