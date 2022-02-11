@@ -22,6 +22,13 @@ This version has only been tested on Ubuntu 20.04 and with a Dell laptop.
 
 Please install and configure i8kutils from https://github.com/vitorafsr/i8kutils.  
 
+### libsmbios (optional)
+
+On Ubuntu 20.04 please install the following package to interface with SMBIOS information:
+```
+sudo apt install python3-libsmbios
+```
+
 ## Installation
 
 ### Stable
