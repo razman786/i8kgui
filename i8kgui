@@ -18,7 +18,7 @@ from PySide6 import QtCore
 from PySide6.QtCore import QSize, Slot, QSettings, QProcess
 from PySide6.QtGui import QIcon, QAction, QScreen, Qt, QIntValidator, QPalette, QColor
 from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton, \
-    QCheckBox, QLineEdit, QLabel, QFormLayout, QPlainTextEdit
+    QCheckBox, QLineEdit, QLabel, QFormLayout
 
 
 class I8kGui(QMainWindow):
@@ -26,9 +26,8 @@ class I8kGui(QMainWindow):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
         self.p = None
-        self.smbios_text = QPlainTextEdit()
-        self.smbios_text.setReadOnly(True)
-        self.smbios_data = dict()
+        self.smbios_data = []
+        self.smbios_info = dict()
         self.always_on = False
         self.monitor_interval = 1000
         self.always_on_checkbox = QCheckBox()
@@ -36,6 +35,7 @@ class I8kGui(QMainWindow):
         self.settings_dialog = QDialog()
         self.info_dialog = QDialog()
         self.save_button = QPushButton("Save", self.settings_dialog)
+        self.smbios_button = QPushButton("SMBIOS Information", self.info_dialog)
         self.i8k_format_version = QLabel("1")
         self.bios_version = QLabel("1")
         self.service_tag = QLabel("N/A")
@@ -72,10 +72,18 @@ class I8kGui(QMainWindow):
             self.always_on_checkbox.setCheckState(Qt.Unchecked)
 
         self.monitor_interval = int(self.settings.value('interval', 1000))
+        info = list(self.settings.value('smbios', []))
+        if info:
+            # reconstruct list back into dict preserving order
+            self.smbios_info = {info[i][0]: info[i][1] for i in range(0, len(info))}  # convert data to dict
+            self.smbios_button.setDisabled(True)
 
     def save_settings(self):
         self.settings.setValue('always_on', self.always_on)
         self.settings.setValue('interval', self.monitor_interval)
+        if self.smbios_info:
+            # preserve ordering by storing a list
+            self.settings.setValue('smbios', list(self.smbios_info.items()))
 
     def always_collect(self, checked):
         if checked == Qt.Checked:
@@ -103,10 +111,15 @@ class I8kGui(QMainWindow):
         self.settings_dialog.close()
 
     def close_info_dialog(self):
+        self.save_settings()
         self.info_dialog.close()
 
     def smbios_message(self, msg):
-        self.smbios_text.appendPlainText(msg)
+        split_msg = msg.split(': ')
+        for item in split_msg:
+            split_item = item.split('\n')
+            for part_item in split_item:
+                self.smbios_data.append(part_item)
 
     def get_smbios_information(self):
         if self.p is None:
@@ -117,55 +130,67 @@ class I8kGui(QMainWindow):
 
             # self.smbios_message("Executing process")
             self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
-            self.p.readyReadStandardOutput.connect(self.handle_stdout)
-            self.p.readyReadStandardError.connect(self.handle_stderr)
-            self.p.stateChanged.connect(self.handle_state)
-            self.p.finished.connect(self.process_finished)  # Clean up once complete.
+            self.p.readyReadStandardOutput.connect(self.handle_smbios_stdout)
+            self.p.readyReadStandardError.connect(self.handle_smbios_stderr)
+            self.p.stateChanged.connect(self.handle_process_state)
+            self.p.finished.connect(self.smbios_process_finished)  # Clean up once complete.
             self.p.start("pkexec", ['python3', str(smbios_file.resolve())])
 
-    def handle_stderr(self):
+    def handle_smbios_stderr(self):
         data = self.p.readAllStandardError()
         stderr = bytes(data).decode("utf8")
-        self.smbios_message(stderr)
+        print(f"QProcess error {stderr}")
 
-    def handle_stdout(self):
+    def handle_smbios_stdout(self):
         data = self.p.readAllStandardOutput()
         stdout = bytes(data).decode("utf8")
         self.smbios_message(stdout)
 
-    def handle_state(self, state):
+    def handle_process_state(self, state):
         states = {
             QProcess.NotRunning: 'Not running',
             QProcess.Starting: 'Starting',
             QProcess.Running: 'Running',
         }
         state_name = states[state]
-        print(f"State changed: {state_name}")
 
-    def process_finished(self):
-        print("Process finished.")
+    def smbios_process_finished(self):
         self.p = None
+        self.process_smbios_data()
+
+    def process_smbios_data(self):
+        if self.smbios_data:
+            self.smbios_data.pop()  # remove white space
+            self.smbios_info = {self.smbios_data[i]: self.smbios_data[i + 1] for i in
+                                range(0, len(self.smbios_data), 2)}  # convert data to dict
+            self.smbios_data = []  # empty data container
+            f_layout = self.info_dialog.layout()
+            for key, value in self.smbios_info.items():
+                f_layout.insertRow(f_layout.rowCount() - 2, str(key), QLabel(str(value)))
+            self.smbios_button.setDisabled(True)
 
     def create_info_dialog(self):
         close_button = QPushButton("close", self.info_dialog)
         close_button.setMaximumWidth(100)
         close_button.clicked.connect(self.close_info_dialog)
 
-        smbios_button = QPushButton("SMBIOS Information", self.info_dialog)
-        smbios_button.setMaximumWidth(250)
-        smbios_button.clicked.connect(self.get_smbios_information)
+        self.smbios_button.setMaximumWidth(250)
+        self.smbios_button.clicked.connect(self.get_smbios_information)
 
         f_layout = QFormLayout()
-        f_layout.addRow("i8k Format Version:", self.i8k_format_version)
-        f_layout.addRow("BIOS Version:", self.bios_version)
-        f_layout.addRow("Service Tag:", self.service_tag)
-        f_layout.addRow("A/C Power Supply:", self.power_status)
-        f_layout.addRow("Button Status:", self.button_status)
+        f_layout.addRow("i8k Format Version", self.i8k_format_version)
+        f_layout.addRow("BIOS Version", self.bios_version)
+        f_layout.addRow("Service Tag", self.service_tag)
+        f_layout.addRow("A/C Power Supply", self.power_status)
+        f_layout.addRow("Button Status", self.button_status)
         f_layout.addRow(" ", None)
-        f_layout.addRow("(requires password)", smbios_button)
-        f_layout.addRow(self.smbios_text)
+        f_layout.addRow("(requires password)", self.smbios_button)
+        f_layout.addRow(" ", None)
         f_layout.addRow(" ", None)
         f_layout.addWidget(close_button)
+        if self.smbios_info:
+            for key, value in self.smbios_info.items():
+                f_layout.insertRow(f_layout.rowCount() - 2, str(key), QLabel(str(value)))
         self.info_dialog.setLayout(f_layout)
 
         # set dialog geometry
