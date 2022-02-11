@@ -171,8 +171,9 @@ class I8kGui(QMainWindow):
         # set dialog geometry
         self.info_dialog.setWindowTitle("Information")
         self.info_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
-        self.info_dialog.setMaximumWidth(400)
-        self.info_dialog.setMaximumHeight(400)
+        self.info_dialog.setMinimumWidth(400)
+        self.info_dialog.setMaximumWidth(600)
+        self.info_dialog.setMaximumHeight(600)
         center_point = QScreen.availableGeometry(QApplication.primaryScreen()).center()
         fg = self.info_dialog.frameGeometry()
         fg.moveCenter(center_point)
