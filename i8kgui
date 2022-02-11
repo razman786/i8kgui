@@ -15,16 +15,20 @@
 from pathlib import Path
 
 from PySide6 import QtCore
-from PySide6.QtCore import QSize, Slot, QSettings
+from PySide6.QtCore import QSize, Slot, QSettings, QProcess
 from PySide6.QtGui import QIcon, QAction, QScreen, Qt, QIntValidator, QPalette, QColor
 from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton, \
-    QCheckBox, QLineEdit, QLabel, QFormLayout
+    QCheckBox, QLineEdit, QLabel, QFormLayout, QPlainTextEdit
 
 
 class I8kGui(QMainWindow):
     def __init__(self):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
+        self.p = None
+        self.smbios_text = QPlainTextEdit()
+        self.smbios_text.setReadOnly(True)
+        self.smbios_data = dict()
         self.always_on = False
         self.monitor_interval = 1000
         self.always_on_checkbox = QCheckBox()
@@ -101,10 +105,55 @@ class I8kGui(QMainWindow):
     def close_info_dialog(self):
         self.info_dialog.close()
 
+    def smbios_message(self, msg):
+        self.smbios_text.appendPlainText(msg)
+
+    def get_smbios_information(self):
+        if self.p is None:
+            # find dell smbios script
+            smbios_file = Path(str(Path.home()) + "/.local/bin/DellSmbios.py")
+            if not smbios_file.is_file():
+                smbios_file = Path("DellSmbios.py")
+
+            # self.smbios_message("Executing process")
+            self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
+            self.p.readyReadStandardOutput.connect(self.handle_stdout)
+            self.p.readyReadStandardError.connect(self.handle_stderr)
+            self.p.stateChanged.connect(self.handle_state)
+            self.p.finished.connect(self.process_finished)  # Clean up once complete.
+            self.p.start("pkexec", ['python3', str(smbios_file.resolve())])
+
+    def handle_stderr(self):
+        data = self.p.readAllStandardError()
+        stderr = bytes(data).decode("utf8")
+        self.smbios_message(stderr)
+
+    def handle_stdout(self):
+        data = self.p.readAllStandardOutput()
+        stdout = bytes(data).decode("utf8")
+        self.smbios_message(stdout)
+
+    def handle_state(self, state):
+        states = {
+            QProcess.NotRunning: 'Not running',
+            QProcess.Starting: 'Starting',
+            QProcess.Running: 'Running',
+        }
+        state_name = states[state]
+        print(f"State changed: {state_name}")
+
+    def process_finished(self):
+        print("Process finished.")
+        self.p = None
+
     def create_info_dialog(self):
         close_button = QPushButton("close", self.info_dialog)
         close_button.setMaximumWidth(100)
         close_button.clicked.connect(self.close_info_dialog)
+
+        smbios_button = QPushButton("SMBIOS Information", self.info_dialog)
+        smbios_button.setMaximumWidth(250)
+        smbios_button.clicked.connect(self.get_smbios_information)
 
         f_layout = QFormLayout()
         f_layout.addRow("i8k Format Version:", self.i8k_format_version)
@@ -112,6 +161,9 @@ class I8kGui(QMainWindow):
         f_layout.addRow("Service Tag:", self.service_tag)
         f_layout.addRow("A/C Power Supply:", self.power_status)
         f_layout.addRow("Button Status:", self.button_status)
+        f_layout.addRow(" ", None)
+        f_layout.addRow("(requires password)", smbios_button)
+        f_layout.addRow(self.smbios_text)
         f_layout.addRow(" ", None)
         f_layout.addWidget(close_button)
         self.info_dialog.setLayout(f_layout)
