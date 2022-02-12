@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 from pathlib import Path
 
-__version__ = "0.3"
+__version__ = "0.3.2"
 
 requirements = [
     'PySide6',
@@ -9,7 +9,6 @@ requirements = [
 
 scripts = [
     'i8kgui',
-    'DellSmbios.py',
 ]
 
 package_data = {'i8kgui': ['icons/*.png']}
@@ -29,5 +28,6 @@ setup(
     data_files=[
         (f"{Path.home()}/.local/share/applications", ['desktop/i8kgui.desktop']),
         (f"{Path.home()}/.local/share/icons", ['icons/i8kgui_icon.png']),
+        (f"{Path.home()}/.local/bin", ['DellSmbios']),
     ],
 )
