@@ -11,9 +11,9 @@
 # see <https://www.gnu.org/licenses/>.
 #
 
-class DellSmbios:
+class I8kGuiSmbios:
     def __init__(self):
-        super(DellSmbios, self).__init__()
+        super(I8kGuiSmbios, self).__init__()
         self.info = dict()
 
     def get_info(self):
@@ -52,5 +52,5 @@ class DellSmbios:
 
 
 if __name__ == '__main__':
-    smbios_info = DellSmbios()
+    smbios_info = I8kGuiSmbios()
     smbios_info.get_info()
