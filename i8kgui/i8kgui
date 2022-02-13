@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If not,
 # see <https://www.gnu.org/licenses/>.
 #
-
+import shutil
 from pathlib import Path
 
 from PySide6 import QtCore
@@ -168,10 +168,11 @@ class I8kGui(QMainWindow):
 
     def bios_thermal_control(self, op=None):
         if self.p is None:
-            # find dell smbios script
-            thermal_file = Path(str(Path.home()) + "/.local/bin/i8kgui_thermal_control")
+            # find smbios script
+            thermal_file = Path(str(shutil.which("i8kgui_thermal_control")))
             if not thermal_file.is_file():
-                thermal_file = Path("i8kgui_thermal_control")
+                thermal_file = Path("i8kgui/i8kgui_thermal_control")
+
             if op == 'enable':
                 # self.smbios_message("Executing process")
                 self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
@@ -258,10 +259,11 @@ class I8kGui(QMainWindow):
 
     def get_smbios_information(self):
         if self.p is None:
-            # find dell smbios script
-            smbios_file = Path('/usr/sbin/smbios-sys-info')
+            # find smbios script
+            smbios_file = Path(str(shutil.which("smbios-sys-info")))
             if not smbios_file.is_file():
-                smbios_file = Path("smbios-sys-info")
+                print("Error please install python3-libsmbios, smbios-sys-info not found")
+                return
 
             # self.smbios_message("Executing process")
             self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
@@ -430,12 +432,13 @@ class I8kGui(QMainWindow):
             self.close_app()
 
     def thermal_mode_selection(self, checked):
-        # print(checked.text())
         if self.p is None:
-            # find dell smbios script
-            thermal_file = Path("/usr/sbin/smbios-thermal-ctl")
+            # find libsmbios script
+            thermal_file = Path(str(shutil.which("smbios-thermal-ctl")))
             if not thermal_file.is_file():
-                thermal_file = Path("/usr/sbin/smbios-thermal-ctl")
+                print("Error please install python3-libsmbios, smbios-thermal-ctl not found.")
+                return
+
             t_args = "--set-thermal-mode="
             if checked.text() == 'Quiet':
                 t_args = t_args + "quiet"
