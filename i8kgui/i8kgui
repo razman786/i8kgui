@@ -74,7 +74,8 @@ class I8kGui(QMainWindow):
 
     def load_settings(self):
         # load continuous data collection setting
-        if self.settings.value('always_on').lower() == 'true':
+        always_on = self.settings.value('always_on')
+        if always_on and always_on.lower() == 'true':
             self.always_on = True
             self.always_on_checkbox.setCheckState(Qt.Checked)
         else:
