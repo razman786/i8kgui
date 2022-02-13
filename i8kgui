@@ -35,6 +35,9 @@ class I8kGui(QMainWindow):
         self.current_thermal_mode = None
         self.always_on = False
         self.bios_thermal_control_on = False
+        self.tray_menu = QMenu()
+        self.thermal_menu_group = QActionGroup(self.tray_menu)
+        self.thermal_control_menu = QMenu("BIOS Thermal Management")
         self.monitor_interval = 1000
         self.always_on_checkbox = QCheckBox()
         self.thermal_checkbox = QCheckBox()
@@ -55,7 +58,6 @@ class I8kGui(QMainWindow):
         self.create_settings_dialog()
         self.create_info_dialog()
         self.tray = None
-        self.tray_menu = None
         self.first_load = True
         self.critical_error = False
         self.degree_sign = u'\N{DEGREE SIGN}'
@@ -64,7 +66,6 @@ class I8kGui(QMainWindow):
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
         self.left_fan_status = QAction("Left Fan Status:      ")
         self.right_fan_status = QAction("Right Fan Status:   ")
-        self.thermal_menu_group = None
         self.load_sys_tray()
 
     def close_app(self):
@@ -85,10 +86,11 @@ class I8kGui(QMainWindow):
             # reconstruct list back into dict preserving order
             self.smbios_info = {info[i][0]: info[i][1] for i in range(0, len(info))}  # convert data to dict
             self.smbios_button.setDisabled(True)
+
+        self.supported_thermal_modes = list(self.settings.value('supported_thermal_modes', []))
         if self.settings.value('bios_thermal_control_on').lower() == 'true':
             self.bios_thermal_control_on = True
             self.current_thermal_mode = self.settings.value('current_thermal_mode')
-            self.supported_thermal_modes = list(self.settings.value('supported_thermal_modes'))
             self.thermal_checkbox.setChecked(True)
         else:
             self.bios_thermal_control_on = False
@@ -206,6 +208,12 @@ class I8kGui(QMainWindow):
         print(f"supported modes: {self.supported_thermal_modes}")
         print(f"current mode {self.current_thermal_mode}")
         if self.thermal_checkbox.isChecked():
+            if not self.thermal_menu_group.actions():
+                if self.supported_thermal_modes:
+                    for item in self.supported_thermal_modes:
+                        thermal_menu_item = QAction(item, checkable=True)
+                        self.thermal_control_menu.addAction(thermal_menu_item)
+                        self.thermal_menu_group.addAction(thermal_menu_item)
             self.thermal_menu_group.setEnabled(True)
             actions = self.thermal_menu_group.actions()
             for item in actions:
@@ -355,7 +363,6 @@ class I8kGui(QMainWindow):
             self.tray.messageClicked.connect(self.message_clicked)
 
             # workaround because tray activated only works with double click
-            self.tray_menu = QMenu()
             self.tray_menu.aboutToShow.connect(self.monitor)
             self.tray_menu.aboutToHide.connect(self.stop_monitor)
 
@@ -367,17 +374,16 @@ class I8kGui(QMainWindow):
             self.tray_menu.addAction(self.right_fan_status)
             self.tray_menu.addSeparator()
 
-            self.thermal_menu_group = QActionGroup(self.tray_menu)
-            thermal_control_menu = QMenu("BIOS Thermal Management")
-            self.tray_menu.addMenu(thermal_control_menu)
+            self.tray_menu.addMenu(self.thermal_control_menu)
 
             self.thermal_menu_group.setExclusive(True)
             self.thermal_menu_group.triggered.connect(self.thermal_mode_selection)
-            if self.supported_thermal_modes:
-                for item in self.supported_thermal_modes:
-                    thermal_menu_item = QAction(item, checkable=True)
-                    thermal_control_menu.addAction(thermal_menu_item)
-                    self.thermal_menu_group.addAction(thermal_menu_item)
+            if not self.thermal_menu_group.actions():
+                if self.supported_thermal_modes:
+                    for item in self.supported_thermal_modes:
+                        thermal_menu_item = QAction(item, checkable=True)
+                        self.thermal_control_menu.addAction(thermal_menu_item)
+                        self.thermal_menu_group.addAction(thermal_menu_item)
 
             if self.bios_thermal_control_on:
                 self.thermal_menu_group.setEnabled(True)
