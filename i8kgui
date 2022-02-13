@@ -16,7 +16,7 @@ from pathlib import Path
 
 from PySide6 import QtCore
 from PySide6.QtCore import QSize, Slot, QSettings, QProcess
-from PySide6.QtGui import QIcon, QAction, QScreen, Qt, QIntValidator, QPalette, QColor
+from PySide6.QtGui import QIcon, QAction, QScreen, Qt, QIntValidator, QPalette, QColor, QActionGroup
 from PySide6.QtWidgets import QApplication, QMainWindow, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QPushButton, \
     QCheckBox, QLineEdit, QLabel, QFormLayout
 
@@ -25,12 +25,23 @@ class I8kGui(QMainWindow):
     def __init__(self):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
+        self.p_state = None
         self.p = None
         self.smbios_data = []
         self.smbios_info = dict()
+        self.supported_thermal_modes_data = []
+        self.supported_thermal_modes = []
+        self.current_thermal_mode_data = []
+        self.current_thermal_mode = None
+        self.thermal_quiet_menu = QAction("Quiet", checkable=True)
+        self.thermal_cool_menu = QAction("Cool Bottom", checkable=True)
+        self.thermal_balanced_menu = QAction("Balanced", checkable=True)
+        self.thermal_performance_menu = QAction("Performance", checkable=True)
         self.always_on = False
+        self.bios_thermal_control_on = False
         self.monitor_interval = 1000
         self.always_on_checkbox = QCheckBox()
+        self.thermal_checkbox = QCheckBox()
         self.interval_input = QLineEdit()
         self.settings_dialog = QDialog()
         self.info_dialog = QDialog()
@@ -57,6 +68,7 @@ class I8kGui(QMainWindow):
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
         self.left_fan_status = QAction("Left Fan Status:      ")
         self.right_fan_status = QAction("Right Fan Status:   ")
+        self.thermal_menu_group = None
         self.load_sys_tray()
 
     def close_app(self):
@@ -77,13 +89,31 @@ class I8kGui(QMainWindow):
             # reconstruct list back into dict preserving order
             self.smbios_info = {info[i][0]: info[i][1] for i in range(0, len(info))}  # convert data to dict
             self.smbios_button.setDisabled(True)
+        if self.settings.value('bios_thermal_control_on').lower() == 'true':
+            self.bios_thermal_control_on = True
+            self.current_thermal_mode = self.settings.value('current_thermal_mode')
+            self.supported_thermal_modes = list(self.settings.value('supported_thermal_modes'))
+            self.thermal_checkbox.setChecked(True)
+        else:
+            self.bios_thermal_control_on = False
 
     def save_settings(self):
+        self.settings.setValue('current_thermal_mode', self.current_thermal_mode)
+        self.settings.setValue('supported_thermal_modes', self.supported_thermal_modes)
+        self.settings.setValue('bios_thermal_control_on', self.bios_thermal_control_on)
         self.settings.setValue('always_on', self.always_on)
         self.settings.setValue('interval', self.monitor_interval)
         if self.smbios_info:
             # preserve ordering by storing a list
             self.settings.setValue('smbios', list(self.smbios_info.items()))
+
+    def enable_thermal_control(self, checked):
+        if checked == Qt.Checked:
+            self.bios_thermal_control(op='enable')
+            self.bios_thermal_control_on = True
+        else:
+            self.bios_thermal_control(op='disable')
+            self.bios_thermal_control_on = False
 
     def always_collect(self, checked):
         if checked == Qt.Checked:
@@ -121,6 +151,90 @@ class I8kGui(QMainWindow):
             for part_item in split_item:
                 self.smbios_data.append(part_item)
 
+    def bios_thermal_control(self, op=None):
+        if self.p is None:
+            # find dell smbios script
+            thermal_file = Path(str(Path.home()) + "/.local/bin/i8kgui_thermal_control")
+            if not thermal_file.is_file():
+                thermal_file = Path("i8kgui_thermal_control")
+            if op == 'enable':
+                # self.smbios_message("Executing process")
+                self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
+                self.p.readyReadStandardOutput.connect(self.handle_thermal_stdout)
+                self.p.readyReadStandardError.connect(self.handle_thermal_stderr)
+                self.p.stateChanged.connect(self.handle_process_state)
+                self.p.finished.connect(self.thermal_process_finished)  # Clean up once complete.
+                self.p.start("pkexec", [str(thermal_file.resolve()), '--enable'])
+            elif op == 'disable':
+                # self.smbios_message("Executing process")
+                self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
+                self.p.readyReadStandardOutput.connect(self.handle_thermal_stdout)
+                self.p.readyReadStandardError.connect(self.handle_thermal_stderr)
+                self.p.stateChanged.connect(self.handle_process_state)
+                self.p.finished.connect(self.thermal_process_finished)  # Clean up once complete.
+                self.p.start("pkexec", [str(thermal_file.resolve()), '--disable'])
+        else:
+            return False
+
+    def handle_thermal_stderr(self):
+        data = self.p.readAllStandardError()
+        stderr = bytes(data).decode("utf8")
+        print(f"QProcess error {stderr}")
+
+    def handle_thermal_stdout(self):
+        data = self.p.readAllStandardOutput()
+        stdout = bytes(data).decode("utf8")
+        # print(f"out: {stdout}")
+        if stdout.startswith('Supported Thermal Modes'):
+            split_stdout = stdout.split('\n')
+            for item in split_stdout:
+                self.supported_thermal_modes_data.append(item.strip())
+        if stdout.startswith('Current Thermal Modes'):
+            split_stdout = stdout.split('\n')
+            for item in split_stdout:
+                self.current_thermal_mode_data.append(item.strip())
+        if stdout.startswith('Helper function to Set Thermal Mode'):
+            split_stdout = stdout.split(': ')
+            self.current_thermal_mode = split_stdout[1].strip().title().replace("-", " ")
+
+    def thermal_process_finished(self):
+        self.p = None
+        if self.supported_thermal_modes_data:
+            self.supported_thermal_modes_data.pop(0)
+            self.supported_thermal_modes_data.pop()
+            self.supported_thermal_modes = self.supported_thermal_modes_data
+            self.supported_thermal_modes_data = []
+        if self.current_thermal_mode_data:
+            self.current_thermal_mode = self.current_thermal_mode_data[1].title().replace("-", " ")
+            self.current_thermal_mode_data = []
+        print(f"supported modes: {self.supported_thermal_modes}")
+        print(f"current mode {self.current_thermal_mode}")
+        if self.thermal_checkbox.isChecked():
+            self.thermal_menu_group.setEnabled(True)
+            actions = self.thermal_menu_group.actions()
+            for item in actions:
+                if item.text() == self.current_thermal_mode:
+                    item.setChecked(True)
+        else:
+            self.thermal_menu_group.setEnabled(False)
+
+    def thermal_process_disable_finished(self):
+        self.p = None
+        if self.supported_thermal_modes_data:
+            self.supported_thermal_modes_data.pop(0)
+            self.supported_thermal_modes_data.pop()
+            self.supported_thermal_modes = self.supported_thermal_modes_data
+            self.supported_thermal_modes_data = []
+        if self.current_thermal_mode_data:
+            self.current_thermal_mode = self.current_thermal_mode_data[1].title().replace("-", " ")
+            self.current_thermal_mode_data = []
+        print(f"disable supported modes: {self.supported_thermal_modes}")
+        print(f"disable current mode {self.current_thermal_mode}")
+        if self.thermal_checkbox.isChecked():
+            self.thermal_menu_group.setEnabled(True)
+        else:
+            self.thermal_menu_group.setEnabled(False)
+
     def get_smbios_information(self):
         if self.p is None:
             # find dell smbios script
@@ -148,11 +262,11 @@ class I8kGui(QMainWindow):
 
     def handle_process_state(self, state):
         states = {
-            QProcess.NotRunning: 'Not running',
+            QProcess.NotRunning: 'NotRunning',
             QProcess.Starting: 'Starting',
             QProcess.Running: 'Running',
         }
-        state_name = states[state]
+        self.p_state = states[state]
 
     def smbios_process_finished(self):
         self.p = None
@@ -208,13 +322,16 @@ class I8kGui(QMainWindow):
         self.save_button.setMaximumWidth(100)
         self.always_on_checkbox.setText("Collect statistics continuously")
         self.always_on_checkbox.stateChanged.connect(self.always_collect)
+        self.thermal_checkbox.setText("Enable BIOS thermal management")
+        self.thermal_checkbox.stateChanged.connect(self.enable_thermal_control)
         self.interval_input.setValidator(QIntValidator())
         self.interval_input.setMaxLength(6)
         self.interval_input.setText(str(self.monitor_interval))
 
         self.save_button.clicked.connect(self.save_dialog_settings)
         f_layout = QFormLayout()
-        f_layout.addRow(self.always_on_checkbox)
+        f_layout.addRow("(requires password)", self.thermal_checkbox)
+        f_layout.addRow(" ", self.always_on_checkbox)
         f_layout.addRow(" ", None)
         f_layout.addRow("Monitoring Interval (milliseconds):", self.interval_input)
         f_layout.addRow(" ", None)
@@ -254,6 +371,29 @@ class I8kGui(QMainWindow):
             self.tray_menu.addAction(self.right_fan_status)
             self.tray_menu.addSeparator()
 
+            self.thermal_menu_group = QActionGroup(self.tray_menu)
+            thermal_control_menu = QMenu("BIOS Thermal Management")
+            self.tray_menu.addMenu(thermal_control_menu)
+            thermal_control_menu.addAction(self.thermal_quiet_menu)
+            thermal_control_menu.addAction(self.thermal_cool_menu)
+            thermal_control_menu.addAction(self.thermal_balanced_menu)
+            thermal_control_menu.addAction(self.thermal_performance_menu)
+            self.thermal_menu_group.addAction(self.thermal_quiet_menu)
+            self.thermal_menu_group.addAction(self.thermal_cool_menu)
+            self.thermal_menu_group.addAction(self.thermal_balanced_menu)
+            self.thermal_menu_group.addAction(self.thermal_performance_menu)
+            self.thermal_menu_group.setExclusive(True)
+            self.thermal_menu_group.triggered.connect(self.thermal_mode_selection)
+            if self.bios_thermal_control_on:
+                self.thermal_menu_group.setEnabled(True)
+                actions = self.thermal_menu_group.actions()
+                for item in actions:
+                    if item.text() == self.current_thermal_mode:
+                        item.setChecked(True)
+            else:
+                self.thermal_menu_group.setEnabled(False)
+            self.tray_menu.addSeparator()
+
             # add info, settings and quit menu items
             action_info = self.tray_menu.addAction("Information")
             action_info.triggered.connect(self.show_info)
@@ -268,6 +408,30 @@ class I8kGui(QMainWindow):
         else:
             QMessageBox.critical(None, "i8kgui", "Unable to locate system tray on this system.")
             self.close_app()
+
+    def thermal_mode_selection(self, checked):
+        # print(checked.text())
+        if self.p is None:
+            # find dell smbios script
+            thermal_file = Path("/usr/sbin/smbios-thermal-ctl")
+            if not thermal_file.is_file():
+                thermal_file = Path("/usr/sbin/smbios-thermal-ctl")
+            t_args = "--set-thermal-mode="
+            if checked.text() == 'Quiet':
+                t_args = t_args + "quiet"
+            elif checked.text() == 'Cool Bottom':
+                t_args = t_args + "cool-bottom"
+            elif checked.text() == 'Balanced':
+                t_args = t_args + "balanced"
+            elif checked.text() == 'Performance':
+                t_args = t_args + "performance"
+            # self.smbios_message("Executing process")
+            self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
+            self.p.readyReadStandardOutput.connect(self.handle_thermal_stdout)
+            self.p.readyReadStandardError.connect(self.handle_thermal_stderr)
+            self.p.stateChanged.connect(self.handle_process_state)
+            self.p.finished.connect(self.thermal_process_finished)  # Clean up once complete.
+            self.p.start("pkexec", [str(thermal_file.resolve()), t_args])
 
     @Slot()
     def message_clicked(self):
