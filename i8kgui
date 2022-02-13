@@ -37,7 +37,7 @@ class I8kGui(QMainWindow):
         self.bios_thermal_control_on = False
         self.tray_menu = QMenu()
         self.thermal_menu_group = QActionGroup(self.tray_menu)
-        self.thermal_control_menu = QMenu("BIOS Thermal Management")
+        self.thermal_control_menu = QMenu("I8K Thermal Management")
         self.monitor_interval = 1000
         self.always_on_checkbox = QCheckBox()
         self.thermal_checkbox = QCheckBox()
@@ -92,8 +92,10 @@ class I8kGui(QMainWindow):
             self.bios_thermal_control_on = True
             self.current_thermal_mode = self.settings.value('current_thermal_mode')
             self.thermal_checkbox.setChecked(True)
+            self.thermal_control_menu.setTitle("BIOS Thermal Management")
         else:
             self.bios_thermal_control_on = False
+            self.thermal_control_menu.setTitle("I8K Thermal Management")
 
     def save_settings(self):
         self.settings.setValue('current_thermal_mode', self.current_thermal_mode)
@@ -109,9 +111,11 @@ class I8kGui(QMainWindow):
         if checked == Qt.Checked:
             self.bios_thermal_control(op='enable')
             self.bios_thermal_control_on = True
+            self.thermal_control_menu.setTitle("BIOS Thermal Management")
         else:
             self.bios_thermal_control(op='disable')
             self.bios_thermal_control_on = False
+            self.thermal_control_menu.setTitle("I8K Thermal Management")
 
     def always_collect(self, checked):
         if checked == Qt.Checked:
@@ -387,12 +391,14 @@ class I8kGui(QMainWindow):
 
             if self.bios_thermal_control_on:
                 self.thermal_menu_group.setEnabled(True)
+                self.thermal_control_menu.setTitle("BIOS Thermal Management")
                 actions = self.thermal_menu_group.actions()
                 for item in actions:
                     if item.text() == self.current_thermal_mode:
                         item.setChecked(True)
             else:
                 self.thermal_menu_group.setEnabled(False)
+                self.thermal_control_menu.setTitle("I8K Thermal Management")
             self.tray_menu.addSeparator()
 
             # add info, settings and quit menu items
