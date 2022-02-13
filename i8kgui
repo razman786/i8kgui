@@ -33,10 +33,6 @@ class I8kGui(QMainWindow):
         self.supported_thermal_modes = []
         self.current_thermal_mode_data = []
         self.current_thermal_mode = None
-        self.thermal_quiet_menu = QAction("Quiet", checkable=True)
-        self.thermal_cool_menu = QAction("Cool Bottom", checkable=True)
-        self.thermal_balanced_menu = QAction("Balanced", checkable=True)
-        self.thermal_performance_menu = QAction("Performance", checkable=True)
         self.always_on = False
         self.bios_thermal_control_on = False
         self.monitor_interval = 1000
