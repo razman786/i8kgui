@@ -73,6 +73,7 @@ class I8kGui(QMainWindow):
         app.quit()
 
     def load_settings(self):
+        # load continuous data collection setting
         if self.settings.value('always_on').lower() == 'true':
             self.always_on = True
             self.always_on_checkbox.setCheckState(Qt.Checked)
@@ -80,22 +81,34 @@ class I8kGui(QMainWindow):
             self.always_on = False
             self.always_on_checkbox.setCheckState(Qt.Unchecked)
 
+        # load monitoring interval setting
         self.monitor_interval = int(self.settings.value('interval', 1000))
+
+        # load smbios information from config
         info = list(self.settings.value('smbios', []))
         if info:
             # reconstruct list back into dict preserving order
             self.smbios_info = {info[i][0]: info[i][1] for i in range(0, len(info))}  # convert data to dict
             self.smbios_button.setDisabled(True)
 
-        self.supported_thermal_modes = list(self.settings.value('supported_thermal_modes', []))
-        if self.settings.value('bios_thermal_control_on').lower() == 'true':
-            self.bios_thermal_control_on = True
-            self.current_thermal_mode = self.settings.value('current_thermal_mode')
-            self.thermal_checkbox.setChecked(True)
-            self.thermal_control_menu.setTitle("BIOS Thermal Management")
+        # load supported thermal modes setting
+        supported_thermal_modes = self.settings.value('supported_thermal_modes')
+        if supported_thermal_modes is None:
+            self.supported_thermal_modes = []
         else:
-            self.bios_thermal_control_on = False
-            self.thermal_control_menu.setTitle("I8K Thermal Management")
+            self.supported_thermal_modes = list(supported_thermal_modes)
+
+        # load thermal mode settings
+        bios_thermal_control_on = self.settings.value('bios_thermal_control_on')
+        if bios_thermal_control_on is not None:
+            if bios_thermal_control_on.lower() == 'true':
+                self.bios_thermal_control_on = True
+                self.current_thermal_mode = self.settings.value('current_thermal_mode')
+                self.thermal_checkbox.setChecked(True)
+                self.thermal_control_menu.setTitle("BIOS Thermal Management")
+            else:
+                self.bios_thermal_control_on = False
+                self.thermal_control_menu.setTitle("I8K Thermal Management")
 
     def save_settings(self):
         self.settings.setValue('current_thermal_mode', self.current_thermal_mode)
