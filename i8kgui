@@ -374,16 +374,15 @@ class I8kGui(QMainWindow):
             self.thermal_menu_group = QActionGroup(self.tray_menu)
             thermal_control_menu = QMenu("BIOS Thermal Management")
             self.tray_menu.addMenu(thermal_control_menu)
-            thermal_control_menu.addAction(self.thermal_quiet_menu)
-            thermal_control_menu.addAction(self.thermal_cool_menu)
-            thermal_control_menu.addAction(self.thermal_balanced_menu)
-            thermal_control_menu.addAction(self.thermal_performance_menu)
-            self.thermal_menu_group.addAction(self.thermal_quiet_menu)
-            self.thermal_menu_group.addAction(self.thermal_cool_menu)
-            self.thermal_menu_group.addAction(self.thermal_balanced_menu)
-            self.thermal_menu_group.addAction(self.thermal_performance_menu)
+
             self.thermal_menu_group.setExclusive(True)
             self.thermal_menu_group.triggered.connect(self.thermal_mode_selection)
+            if self.supported_thermal_modes:
+                for item in self.supported_thermal_modes:
+                    thermal_menu_item = QAction(item, checkable=True)
+                    thermal_control_menu.addAction(thermal_menu_item)
+                    self.thermal_menu_group.addAction(thermal_menu_item)
+
             if self.bios_thermal_control_on:
                 self.thermal_menu_group.setEnabled(True)
                 actions = self.thermal_menu_group.actions()
