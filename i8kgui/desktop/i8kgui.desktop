@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Terminal=false
+Name=i8kgui
+Exec=i8kgui
+Icon=i8kgui_icon.png
+StartupWMClass=i8kgui
