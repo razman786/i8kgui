@@ -246,9 +246,9 @@ class I8kGui(QMainWindow):
     def get_smbios_information(self):
         if self.p is None:
             # find dell smbios script
-            smbios_file = Path(str(Path.home()) + "/.local/bin/DellSmbios")
+            smbios_file = Path(str(Path.home()) + "/.local/bin/i8kgui_smbios")
             if not smbios_file.is_file():
-                smbios_file = Path("DellSmbios")
+                smbios_file = Path("i8kgui_smbios")
 
             # self.smbios_message("Executing process")
             self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.

@@ -28,7 +28,7 @@ setup(
     data_files=[
         (f"{Path.home()}/.local/share/applications", ['desktop/i8kgui.desktop']),
         (f"{Path.home()}/.local/share/icons", ['icons/i8kgui_icon.png']),
-        (f"{Path.home()}/.local/bin", ['DellSmbios']),
+        (f"{Path.home()}/.local/bin", ['i8kgui_smbios']),
         (f"{Path.home()}/.local/bin", ['i8kgui_thermal_control']),
     ],
 )
