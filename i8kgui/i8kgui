@@ -26,6 +26,7 @@ class I8kGui(QMainWindow):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
         self.critical_error = False
+        self.degree_sign = u'\N{DEGREE SIGN}'
         self.p_state = None
         self.p = None
         self.smbios_data = []
@@ -66,7 +67,6 @@ class I8kGui(QMainWindow):
         self.create_info_dialog()
         self.tray = None
         self.first_load = True
-        self.degree_sign = u'\N{DEGREE SIGN}'
         self.cpu_temp = QAction("CPU Temp:                ")
         self.left_fan_rpm = QAction("Left Fan RPM:          ")
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
@@ -307,7 +307,7 @@ class I8kGui(QMainWindow):
                         if key.startswith('Fan Mode'):
                             mode = key.split('Fan Mode ')
                             if int(mode[1]) == self.left_fan_mode:
-                                title = f"{key}: L: {value[0]} H: {value[1]}"
+                                title = f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
                                 self.fan_mode_menu_item.setText(title)
                                 self.thermal_control_menu.addAction(self.fan_mode_menu_item)
                                 self.thermal_menu_group.addAction(self.fan_mode_menu_item)
@@ -322,7 +322,7 @@ class I8kGui(QMainWindow):
                             self.thermal_control_menu.addAction(self.right_fan_thermal_menu_item)
                             self.thermal_menu_group.addAction(self.right_fan_thermal_menu_item)
                         else:
-                            title = f"{key}: {value}"
+                            title = f"{key}: {value}{self.degree_sign}C"
                             thermal_menu_item = QAction(title, checkable=False)
                             self.thermal_control_menu.addAction(thermal_menu_item)
                             self.thermal_menu_group.addAction(thermal_menu_item)
@@ -605,13 +605,13 @@ class I8kGui(QMainWindow):
                 if key.startswith('Fan Mode'):
                     mode = key.split('Fan Mode ')
                     if int(mode[1]) == self.left_fan_mode:
-                        title = f"{key}: L: {value[0]} H: {value[1]}"
+                        title = f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
                         self.fan_mode_menu_item.setText(title)
                 elif key.startswith('Left Speed'):
                     title = f"Max {key}: {value[self.left_fan_mode]}"
                     self.left_fan_thermal_menu_item.setText(title)
                 elif key.startswith('Right Speed'):
-                    title = f"MAx {key}: {value[self.right_fan_mode]}"
+                    title = f"Max {key}: {value[self.right_fan_mode]}"
                     self.right_fan_thermal_menu_item.setText(title)
 
     def status(self, reason):
