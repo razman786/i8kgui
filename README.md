@@ -43,11 +43,11 @@ sudo cp dell-bios-fan-control /usr/bin
 
 Please install this service file
 from https://github.com/gilbsgilbs/dell-bios-fan-control-git/blob/master/dell-bios-fan-control.service
-into `/etc/systemd/system/multi-user.target.wants/`
+into `/etc/systemd/system/`
 
 ```
 curl -O https://raw.githubusercontent.com/gilbsgilbs/dell-bios-fan-control-git/master/dell-bios-fan-control.service
-sudo cp dell-bios-fan-control.service /etc/systemd/system/multi-user.target.wants/
+sudo cp dell-bios-fan-control.service /etc/systemd/system/
 ```
 
 ### libsmbios
