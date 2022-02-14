@@ -231,22 +231,10 @@ class I8kGui(QMainWindow):
         print(f"current mode {self.current_thermal_mode}")
         if self.thermal_checkbox.isChecked() and self.current_thermal_mode is not None:
             self.bios_thermal_control_on = True
-            self.thermal_control_menu.setTitle("BIOS Thermal Management")
-            if not self.thermal_menu_group.actions():
-                if self.supported_thermal_modes:
-                    for item in self.supported_thermal_modes:
-                        thermal_menu_item = QAction(item, checkable=True)
-                        self.thermal_control_menu.addAction(thermal_menu_item)
-                        self.thermal_menu_group.addAction(thermal_menu_item)
-            self.thermal_menu_group.setEnabled(True)
-            actions = self.thermal_menu_group.actions()
-            for item in actions:
-                if item.text() == self.current_thermal_mode:
-                    item.setChecked(True)
+            self.switch_thermal_menu()
         else:
-            self.thermal_menu_group.setEnabled(False)
             self.bios_thermal_control_on = False
-            self.thermal_control_menu.setTitle("I8K Thermal Management")
+            self.switch_thermal_menu()
 
     def thermal_process_disable_finished(self):
         if self.p.exitCode() != 0:
@@ -269,13 +257,44 @@ class I8kGui(QMainWindow):
         print(f"disable supported modes: {self.supported_thermal_modes}")
         print(f"disable current mode {self.current_thermal_mode}")
         if self.thermal_checkbox.isChecked():
-            self.thermal_menu_group.setEnabled(True)
             self.bios_thermal_control_on = True
-            self.thermal_control_menu.setTitle("BIOS Thermal Management")
+            self.switch_thermal_menu()
         else:
-            self.thermal_menu_group.setEnabled(False)
             self.bios_thermal_control_on = False
-            self.thermal_control_menu.setTitle("I8K Thermal Management")
+            self.switch_thermal_menu()
+
+    def switch_thermal_menu(self):
+        # remove menu and re-build  menu
+        self.remove_thermal_menu()
+        self.build_thermal_menu()
+
+    def remove_thermal_menu(self):
+        actions = self.thermal_menu_group.actions()
+        for action in actions:
+            self.thermal_control_menu.removeAction(action)
+            self.thermal_menu_group.removeAction(action)
+
+        self.thermal_menu_group.setEnabled(False)
+
+    def build_thermal_menu(self):
+        if not self.thermal_menu_group.actions():
+            if self.supported_thermal_modes:
+                if self.bios_thermal_control_on:
+                    for item in self.supported_thermal_modes:
+                        thermal_menu_item = QAction(item, checkable=True)
+                        self.thermal_control_menu.addAction(thermal_menu_item)
+                        self.thermal_menu_group.addAction(thermal_menu_item)
+
+                    self.thermal_menu_group.setEnabled(True)
+                    self.thermal_control_menu.setTitle("BIOS Thermal Management")
+                    actions = self.thermal_menu_group.actions()
+                    for action in actions:
+                        if action.text() == self.current_thermal_mode:
+                            action.setChecked(True)
+                else:
+                    self.thermal_menu_group.setEnabled(False)
+                    self.thermal_control_menu.setTitle("I8K Thermal Management")
+                    # build i8k menu
 
     def get_smbios_information(self):
         if self.p is None:
@@ -417,23 +436,7 @@ class I8kGui(QMainWindow):
 
             self.thermal_menu_group.setExclusive(True)
             self.thermal_menu_group.triggered.connect(self.thermal_mode_selection)
-            if not self.thermal_menu_group.actions():
-                if self.supported_thermal_modes:
-                    for item in self.supported_thermal_modes:
-                        thermal_menu_item = QAction(item, checkable=True)
-                        self.thermal_control_menu.addAction(thermal_menu_item)
-                        self.thermal_menu_group.addAction(thermal_menu_item)
-
-            if self.bios_thermal_control_on:
-                self.thermal_menu_group.setEnabled(True)
-                self.thermal_control_menu.setTitle("BIOS Thermal Management")
-                actions = self.thermal_menu_group.actions()
-                for item in actions:
-                    if item.text() == self.current_thermal_mode:
-                        item.setChecked(True)
-            else:
-                self.thermal_menu_group.setEnabled(False)
-                self.thermal_control_menu.setTitle("I8K Thermal Management")
+            self.build_thermal_menu()
             self.tray_menu.addSeparator()
 
             # add info, settings and quit menu items
