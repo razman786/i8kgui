@@ -25,6 +25,7 @@ class I8kGui(QMainWindow):
     def __init__(self):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
+        self.critical_error = False
         self.p_state = None
         self.p = None
         self.smbios_data = []
@@ -51,6 +52,12 @@ class I8kGui(QMainWindow):
         self.service_tag = QLabel("N/A")
         self.power_status = QLabel("N/A")
         self.button_status = QLabel("N/A")
+        self.fan_mode_menu_item = QAction("", checkable=False)
+        self.left_fan_thermal_menu_item = QAction("", checkable=False)
+        self.right_fan_thermal_menu_item = QAction("", checkable=False)
+        self.left_fan_mode = 0
+        self.right_fan_mode = 0
+        self.i8k_info = dict()
         self.load_settings()
         self.monitorTimer = QtCore.QTimer(self)
         self.monitorTimer.timeout.connect(self.refresh_monitor)
@@ -59,7 +66,6 @@ class I8kGui(QMainWindow):
         self.create_info_dialog()
         self.tray = None
         self.first_load = True
-        self.critical_error = False
         self.degree_sign = u'\N{DEGREE SIGN}'
         self.cpu_temp = QAction("CPU Temp:                ")
         self.left_fan_rpm = QAction("Left Fan RPM:          ")
@@ -110,6 +116,11 @@ class I8kGui(QMainWindow):
             else:
                 self.bios_thermal_control_on = False
                 self.thermal_control_menu.setTitle("I8K Thermal Management")
+        else:
+            self.bios_thermal_control_on = False
+            self.thermal_control_menu.setTitle("I8K Thermal Management")
+
+        self.build_thermal_menu()
 
     def save_settings(self):
         self.settings.setValue('current_thermal_mode', self.current_thermal_mode)
@@ -170,7 +181,6 @@ class I8kGui(QMainWindow):
             if not thermal_file.is_file():
                 thermal_file = Path("i8kgui_thermal_control")
             if op == 'enable':
-                # self.smbios_message("Executing process")
                 self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
                 self.p.readyReadStandardOutput.connect(self.handle_thermal_stdout)
                 self.p.readyReadStandardError.connect(self.handle_thermal_stderr)
@@ -178,7 +188,6 @@ class I8kGui(QMainWindow):
                 self.p.finished.connect(self.thermal_process_finished)  # Clean up once complete.
                 self.p.start("pkexec", [str(thermal_file.resolve()), '--enable'])
             elif op == 'disable':
-                # self.smbios_message("Executing process")
                 self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
                 self.p.readyReadStandardOutput.connect(self.handle_thermal_stdout)
                 self.p.readyReadStandardError.connect(self.handle_thermal_stderr)
@@ -196,7 +205,6 @@ class I8kGui(QMainWindow):
     def handle_thermal_stdout(self):
         data = self.p.readAllStandardOutput()
         stdout = bytes(data).decode("utf8")
-        # print(f"out: {stdout}")
         if stdout.startswith('Supported Thermal Modes'):
             split_stdout = stdout.split('\n')
             for item in split_stdout:
@@ -264,7 +272,7 @@ class I8kGui(QMainWindow):
             self.switch_thermal_menu()
 
     def switch_thermal_menu(self):
-        # remove menu and re-build  menu
+        # remove and re-build thermal menu
         self.remove_thermal_menu()
         self.build_thermal_menu()
 
@@ -278,8 +286,8 @@ class I8kGui(QMainWindow):
 
     def build_thermal_menu(self):
         if not self.thermal_menu_group.actions():
-            if self.supported_thermal_modes:
-                if self.bios_thermal_control_on:
+            if self.bios_thermal_control_on:
+                if self.supported_thermal_modes:
                     for item in self.supported_thermal_modes:
                         thermal_menu_item = QAction(item, checkable=True)
                         self.thermal_control_menu.addAction(thermal_menu_item)
@@ -291,10 +299,76 @@ class I8kGui(QMainWindow):
                     for action in actions:
                         if action.text() == self.current_thermal_mode:
                             action.setChecked(True)
-                else:
-                    self.thermal_menu_group.setEnabled(False)
+            elif not self.bios_thermal_control_on:
+                self.i8k_info = self.get_i8k_information()
+                print(f'info {self.i8k_info}')
+                if self.i8k_info:
+                    for key, value in self.i8k_info.items():
+                        if key.startswith('Fan Mode'):
+                            mode = key.split('Fan Mode ')
+                            if int(mode[1]) == self.left_fan_mode:
+                                title = f"{key}: L: {value[0]} H: {value[1]}"
+                                self.fan_mode_menu_item.setText(title)
+                                self.thermal_control_menu.addAction(self.fan_mode_menu_item)
+                                self.thermal_menu_group.addAction(self.fan_mode_menu_item)
+                        elif key.startswith('Left Speed'):
+                            title = f"Max {key}: {value[self.left_fan_mode]}"
+                            self.left_fan_thermal_menu_item.setText(title)
+                            self.thermal_control_menu.addAction(self.left_fan_thermal_menu_item)
+                            self.thermal_menu_group.addAction(self.left_fan_thermal_menu_item)
+                        elif key.startswith('Right Speed'):
+                            title = f"Max {key}: {value[self.right_fan_mode]}"
+                            self.right_fan_thermal_menu_item.setText(title)
+                            self.thermal_control_menu.addAction(self.right_fan_thermal_menu_item)
+                            self.thermal_menu_group.addAction(self.right_fan_thermal_menu_item)
+                        else:
+                            title = f"{key}: {value}"
+                            thermal_menu_item = QAction(title, checkable=False)
+                            self.thermal_control_menu.addAction(thermal_menu_item)
+                            self.thermal_menu_group.addAction(thermal_menu_item)
+
+                    self.thermal_menu_group.setEnabled(True)
                     self.thermal_control_menu.setTitle("I8K Thermal Management")
-                    # build i8k menu
+
+    def get_i8k_information(self):
+        if not self.critical_error:
+            info = dict()
+            try:
+                i8k_config = open('/etc/i8kmon.conf', 'r')
+            except IOError as e:
+                self.critical_error = True
+                self.tray.showMessage("i8kgui",
+                                      f"Error cannot find /etc/i8kmon.conf. Please check your config file \n\n{e}",
+                                      icon=QSystemTrayIcon.Critical, msecs=10000)
+            else:
+                for line in i8k_config:
+                    if line.startswith(f'set config(t_high)'):
+                        conf = line.split('set config(t_high)')[1].strip()
+                        info['High CPU Temp'] = conf
+                    if line.startswith(f'set config(0)'):
+                        split_line = line.split('{')
+                        conf = split_line[2].split('}')
+                        info['Fan Mode 0'] = list(conf[1].split())
+                    if line.startswith(f'set config(1)'):
+                        split_line = line.split('{')
+                        conf = split_line[2].split('}')
+                        info['Fan Mode 1'] = list(conf[1].split())
+                    if line.startswith(f'set config(2)'):
+                        split_line = line.split('{')
+                        conf = split_line[2].split('}')
+                        info['Fan Mode 2'] = list(conf[1].split())
+                    if line.startswith(f'set config(3)'):
+                        split_line = line.split('{')
+                        conf = split_line[2].split('}')
+                        info['Fan Mode 3'] = list(conf[1].split())
+                    if line.startswith('set status(leftspeed)'):
+                        conf = line.split("set status(leftspeed)")[1].strip().strip('"')
+                        info['Left Speed'] = list(conf.split())
+                    if line.startswith('set status(rightspeed)'):
+                        conf = line.split("set status(rightspeed)")[1].strip().strip('"')
+                        info['Right Speed'] = list(conf.split())
+                i8k_config.close()
+            return info
 
     def get_smbios_information(self):
         if self.p is None:
@@ -432,11 +506,11 @@ class I8kGui(QMainWindow):
             self.tray_menu.addAction(self.right_fan_status)
             self.tray_menu.addSeparator()
 
+            # setup thermal control management menu
             self.tray_menu.addMenu(self.thermal_control_menu)
-
             self.thermal_menu_group.setExclusive(True)
             self.thermal_menu_group.triggered.connect(self.thermal_mode_selection)
-            self.build_thermal_menu()
+            self.build_thermal_menu()  # menu created based on settings
             self.tray_menu.addSeparator()
 
             # add info, settings and quit menu items
@@ -455,29 +529,31 @@ class I8kGui(QMainWindow):
             self.close_app()
 
     def thermal_mode_selection(self, checked):
-        if self.p is None:
-            # find libsmbios script
-            thermal_file = Path(str(shutil.which("smbios-thermal-ctl")))
-            if not thermal_file.is_file():
-                print("Error please install python3-libsmbios, smbios-thermal-ctl not found.")
-                return
+        if self.bios_thermal_control_on:
+            if self.p is None:
+                # find libsmbios script
+                thermal_file = Path(str(shutil.which("smbios-thermal-ctl")))
+                if not thermal_file.is_file():
+                    print("Error please install python3-libsmbios, smbios-thermal-ctl not found.")
+                    return
 
-            t_args = "--set-thermal-mode="
-            if checked.text() == 'Quiet':
-                t_args = t_args + "quiet"
-            elif checked.text() == 'Cool Bottom':
-                t_args = t_args + "cool-bottom"
-            elif checked.text() == 'Balanced':
-                t_args = t_args + "balanced"
-            elif checked.text() == 'Performance':
-                t_args = t_args + "performance"
-            # self.smbios_message("Executing process")
-            self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
-            self.p.readyReadStandardOutput.connect(self.handle_thermal_stdout)
-            self.p.readyReadStandardError.connect(self.handle_thermal_stderr)
-            self.p.stateChanged.connect(self.handle_process_state)
-            self.p.finished.connect(self.thermal_process_finished)  # Clean up once complete.
-            self.p.start("pkexec", [str(thermal_file.resolve()), t_args])
+                t_args = "--set-thermal-mode="
+                if checked.text() == 'Quiet':
+                    t_args = t_args + "quiet"
+                elif checked.text() == 'Cool Bottom':
+                    t_args = t_args + "cool-bottom"
+                elif checked.text() == 'Balanced':
+                    t_args = t_args + "balanced"
+                elif checked.text() == 'Performance':
+                    t_args = t_args + "performance"
+                self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
+                self.p.readyReadStandardOutput.connect(self.handle_thermal_stdout)
+                self.p.readyReadStandardError.connect(self.handle_thermal_stderr)
+                self.p.stateChanged.connect(self.handle_process_state)
+                self.p.finished.connect(self.thermal_process_finished)  # Clean up once complete.
+                self.p.start("pkexec", [str(thermal_file.resolve()), t_args])
+        else:
+            print("Edit i8kmon config")  # TODO - add i8kmon config updating
 
     @Slot()
     def message_clicked(self):
@@ -503,6 +579,11 @@ class I8kGui(QMainWindow):
                 self.right_fan_rpm.setText(f"Right Fan RPM:       {split_line[7].strip()}")
                 self.left_fan_status.setText(f"Left Fan Status:      {split_line[4].strip()}")
                 self.right_fan_status.setText(f"Right Fan Status:   {split_line[5].strip()}")
+                if self.left_fan_mode != int(split_line[4].strip()) or self.right_fan_mode != int(
+                        split_line[5].strip()):
+                    self.left_fan_mode = int(split_line[4].strip())
+                    self.right_fan_mode = int(split_line[5].strip())
+                    self.update_i8k_thermal()
 
                 self.i8k_format_version.setText(split_line[0].strip())
                 self.bios_version.setText(split_line[1].strip())
@@ -511,6 +592,23 @@ class I8kGui(QMainWindow):
                 self.button_status.setText(split_line[9].strip())
 
                 self.tray.activated.emit(QSystemTrayIcon.Trigger)  # send fake single-click event as workaround
+
+    def update_i8k_thermal(self):
+        if not self.i8k_info:
+            self.i8k_info = self.get_i8k_information()
+        if self.i8k_info:
+            for key, value in self.i8k_info.items():
+                if key.startswith('Fan Mode'):
+                    mode = key.split('Fan Mode ')
+                    if int(mode[1]) == self.left_fan_mode:
+                        title = f"{key}: L: {value[0]} H: {value[1]}"
+                        self.fan_mode_menu_item.setText(title)
+                elif key.startswith('Left Speed'):
+                    title = f"Max {key}: {value[self.left_fan_mode]}"
+                    self.left_fan_thermal_menu_item.setText(title)
+                elif key.startswith('Right Speed'):
+                    title = f"MAx {key}: {value[self.right_fan_mode]}"
+                    self.right_fan_thermal_menu_item.setText(title)
 
     def status(self, reason):
         # start live updating of values if system tray is in active use,
