@@ -67,6 +67,7 @@ class I8kGui(QMainWindow):
         self.create_info_dialog()
         self.tray = None
         self.first_load = True
+        self.cpu_mhz = QAction("CPU MHz:                ")
         self.cpu_temp = QAction("CPU Temp:                ")
         self.left_fan_rpm = QAction("Left Fan RPM:          ")
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
@@ -501,6 +502,7 @@ class I8kGui(QMainWindow):
             self.tray_menu.aboutToHide.connect(self.stop_monitor)
 
             # setup display
+            self.tray_menu.addAction(self.cpu_mhz)
             self.tray_menu.addAction(self.cpu_temp)
             self.tray_menu.addAction(self.left_fan_rpm)
             self.tray_menu.addAction(self.right_fan_rpm)
@@ -577,7 +579,7 @@ class I8kGui(QMainWindow):
                 self.tray.showMessage("i8kgui", f"Error cannot find i8k module. Please install/start i8kutils.\n\n{e}",
                                       icon=QSystemTrayIcon.Critical, msecs=10000)
             else:
-                line = i8k_proc.readline()
+                line = i8k_proc.readline()  # output is only a single line.
                 i8k_proc.close()
                 split_line = line.split(' ')
                 self.cpu_temp.setText(f"CPU Temp:                {split_line[3].strip()}{self.degree_sign}C")
@@ -596,6 +598,20 @@ class I8kGui(QMainWindow):
                 self.service_tag.setText(split_line[2].strip())
                 self.power_status.setText(split_line[8].strip())
                 self.button_status.setText(split_line[9].strip())
+
+                try:
+                    cpu_proc = open('/proc/cpuinfo', 'r')
+                except IOError as e:
+                    self.critical_error = True
+                    self.tray.showMessage("i8kgui", f"Error cannot find /proc/cpuinfo.\n\n{e}",
+                                          icon=QSystemTrayIcon.Critical, msecs=10000)
+                else:
+                    for line in cpu_proc:
+                        if 'MHz' in line:
+                            mhz = int(line.split(':')[1].strip('\n').split('.')[0].strip())
+                            self.cpu_mhz.setText(f"CPU Freq:                  {mhz} MHz")
+                            break
+                    cpu_proc.close()
 
                 self.tray.activated.emit(QSystemTrayIcon.Trigger)  # send fake single-click event as workaround
 
