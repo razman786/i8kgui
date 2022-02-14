@@ -124,12 +124,8 @@ class I8kGui(QMainWindow):
     def enable_thermal_control(self, checked):
         if checked == Qt.Checked:
             self.bios_thermal_control(op='enable')
-            self.bios_thermal_control_on = True
-            self.thermal_control_menu.setTitle("BIOS Thermal Management")
         else:
             self.bios_thermal_control(op='disable')
-            self.bios_thermal_control_on = False
-            self.thermal_control_menu.setTitle("I8K Thermal Management")
 
     def always_collect(self, checked):
         if checked == Qt.Checked:
@@ -214,7 +210,15 @@ class I8kGui(QMainWindow):
             self.current_thermal_mode = split_stdout[1].strip().title().replace("-", " ")
 
     def thermal_process_finished(self):
-        self.p = None
+        if self.p.exitCode() != 0:
+            self.p = None
+            self.thermal_checkbox.setChecked(False)
+            self.bios_thermal_control_on = False
+            self.supported_thermal_modes_data = []
+            self.current_thermal_mode_data = []
+            return
+        else:
+            self.p = None
         if self.supported_thermal_modes_data:
             self.supported_thermal_modes_data.pop(0)
             self.supported_thermal_modes_data.pop()
@@ -225,7 +229,9 @@ class I8kGui(QMainWindow):
             self.current_thermal_mode_data = []
         print(f"supported modes: {self.supported_thermal_modes}")
         print(f"current mode {self.current_thermal_mode}")
-        if self.thermal_checkbox.isChecked():
+        if self.thermal_checkbox.isChecked() and self.current_thermal_mode is not None:
+            self.bios_thermal_control_on = True
+            self.thermal_control_menu.setTitle("BIOS Thermal Management")
             if not self.thermal_menu_group.actions():
                 if self.supported_thermal_modes:
                     for item in self.supported_thermal_modes:
@@ -241,7 +247,17 @@ class I8kGui(QMainWindow):
             self.thermal_menu_group.setEnabled(False)
 
     def thermal_process_disable_finished(self):
-        self.p = None
+        if self.p.exitCode() != 0:
+            self.p = None
+            self.thermal_checkbox.setChecked(True)
+            self.bios_thermal_control_on = True
+            self.supported_thermal_modes_data = []
+            self.current_thermal_mode_data = []
+            return
+        else:
+            self.p = None
+        self.bios_thermal_control_on = False
+        self.thermal_control_menu.setTitle("I8K Thermal Management")
         if self.supported_thermal_modes_data:
             self.supported_thermal_modes_data.pop(0)
             self.supported_thermal_modes_data.pop()
