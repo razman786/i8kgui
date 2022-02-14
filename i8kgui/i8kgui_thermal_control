@@ -36,7 +36,7 @@ then
 	status="disable"
 fi
 
-if [[ ! -f "/usr/sbin/smbios-thermal-ctl2" ]]
+if [[ ! -f "/usr/sbin/smbios-thermal-ctl" ]]
 then
   printf "Error smbios-thermal-ctl not found" >&2
   exit 1
