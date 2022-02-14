@@ -264,7 +264,7 @@ class I8kGui(QMainWindow):
             self.current_thermal_mode_data = []
         print(f"disable supported modes: {self.supported_thermal_modes}")
         print(f"disable current mode {self.current_thermal_mode}")
-        if self.thermal_checkbox.isChecked():
+        if self.thermal_checkbox.isChecked() and self.current_thermal_mode is not None:
             self.bios_thermal_control_on = True
             self.switch_thermal_menu()
         else:
@@ -550,6 +550,8 @@ class I8kGui(QMainWindow):
                     t_args = t_args + "balanced"
                 elif checked.text() == 'Performance':
                     t_args = t_args + "performance"
+                else:
+                    t_args = t_args + 'balanced'
                 self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
                 self.p.readyReadStandardOutput.connect(self.handle_thermal_stdout)
                 self.p.readyReadStandardError.connect(self.handle_thermal_stderr)
@@ -636,10 +638,22 @@ class I8kGui(QMainWindow):
                 self.monitorTimer.stop()
 
     def show_settings(self):
-        self.settings_dialog.show()
+        if self.settings_dialog.isVisible():
+            self.settings_dialog.raise_()
+            self.settings_dialog.setFocus()
+        else:
+            self.settings_dialog.show()
+            self.settings_dialog.raise_()
+            self.settings_dialog.setFocus()
 
     def show_info(self):
-        self.info_dialog.show()
+        if self.info_dialog.isVisible():
+            self.info_dialog.raise_()
+            self.info_dialog.setFocus()
+        else:
+            self.info_dialog.show()
+            self.info_dialog.raise_()
+            self.info_dialog.setFocus()
 
 
 if __name__ == '__main__':
