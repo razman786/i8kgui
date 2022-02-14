@@ -172,8 +172,7 @@ class I8kGui(QMainWindow):
             # find smbios script
             thermal_file = Path(str(shutil.which("i8kgui_thermal_control")))
             if not thermal_file.is_file():
-                thermal_file = Path("i8kgui/i8kgui_thermal_control")
-
+                thermal_file = Path("i8kgui_thermal_control")
             if op == 'enable':
                 # self.smbios_message("Executing process")
                 self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
