@@ -6,9 +6,10 @@ A simple system tray GUI to display useful information from [i8kutils](https://g
 as a quick hack for my own needs.
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/7116312/153513946-7eca1bf7-ab22-4dda-a43b-a4c450da728d.png" width="150" />
-  <img src="https://user-images.githubusercontent.com/7116312/153514164-887ff23e-04cd-4ce5-a864-149521fb2878.png" width="150" />
-  <img src="https://user-images.githubusercontent.com/7116312/153514232-26ee3aea-5cc0-4df4-af27-370d7c7251b8.png" width="250" />
+  <img src="https://user-images.githubusercontent.com/7116312/153890437-a2bae919-5778-4364-83e8-c9c620b8f9f3.png" width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/153890588-f127a839-38bd-488c-bf2f-d6b1b30443c6.png" width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/153890711-452b82ff-dc22-437e-b541-a651064d9b23.png" width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/153890843-be0c61eb-7a95-4584-b723-66e6fc279e68.png" width="250" />
 </p>
 
 i8kgui uses i8kutils to gather information such as CPU temperature and fan speeds. It attempts to only update GUI values
