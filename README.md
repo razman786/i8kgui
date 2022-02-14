@@ -31,7 +31,7 @@ sudo apt install i8kutils
 Please install Dell BIOS Fan Control from https://github.com/TomFreudenberg/dell-bios-fan-control and install it
 into `/usr/bin/`.
 
-If you are not sure that you have GCC installed, please run this first `sudo apt install build-essentiala`, then:
+If you are not sure that you have GCC installed, please run this first `sudo apt install build-essentials`, then:
 
 ```
 git clone https://github.com/TomFreudenberg/dell-bios-fan-control.git
@@ -78,11 +78,11 @@ python3 setup.py install --user
 
 Please ensure that you have configured i8kutils before starting.
 
-By default, i8kgui displays i8kutils information, however it does facilitate thermal management from the BIOS.
-If you enable this feature typically four fan modes will be available. Please note that using 'Quiet', or 'Cool Bottom'
+By default, i8kgui displays i8kutils information, however it does facilitate thermal management using the BIOS.
+If you enable this feature typically four fan modes will be available. Please note that, using 'Quiet', or 'Cool Bottom'
 modes will reduce performance due to CPU power capping. Changing BIOS thermal modes may require entering a user password.
 
-Disabling BIOS thermal management will re-enable i8kutils's configuration.
+Disabling BIOS thermal management will re-enable i8kutils's management and configuration.
 
 ## Issues and requests
 
