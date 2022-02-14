@@ -375,7 +375,9 @@ class I8kGui(QMainWindow):
             # find smbios script
             smbios_file = Path(str(shutil.which("smbios-sys-info")))
             if not smbios_file.is_file():
-                print("Error please install python3-libsmbios, smbios-sys-info not found")
+                self.tray.showMessage("i8kgui",
+                                      f"Error please install python3-libsmbios, smbios-sys-info not found",
+                                      icon=QSystemTrayIcon.Critical, msecs=10000)
                 return
 
             # self.smbios_message("Executing process")
@@ -534,7 +536,9 @@ class I8kGui(QMainWindow):
                 # find libsmbios script
                 thermal_file = Path(str(shutil.which("smbios-thermal-ctl")))
                 if not thermal_file.is_file():
-                    print("Error please install python3-libsmbios, smbios-thermal-ctl not found.")
+                    self.tray.showMessage("i8kgui",
+                                          f"Error please install python3-libsmbios, smbios-thermal-ctl not found.",
+                                          icon=QSystemTrayIcon.Critical, msecs=10000)
                     return
 
                 t_args = "--set-thermal-mode="
