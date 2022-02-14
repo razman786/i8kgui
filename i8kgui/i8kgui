@@ -245,6 +245,8 @@ class I8kGui(QMainWindow):
                     item.setChecked(True)
         else:
             self.thermal_menu_group.setEnabled(False)
+            self.bios_thermal_control_on = False
+            self.thermal_control_menu.setTitle("I8K Thermal Management")
 
     def thermal_process_disable_finished(self):
         if self.p.exitCode() != 0:
@@ -256,8 +258,6 @@ class I8kGui(QMainWindow):
             return
         else:
             self.p = None
-        self.bios_thermal_control_on = False
-        self.thermal_control_menu.setTitle("I8K Thermal Management")
         if self.supported_thermal_modes_data:
             self.supported_thermal_modes_data.pop(0)
             self.supported_thermal_modes_data.pop()
@@ -270,8 +270,12 @@ class I8kGui(QMainWindow):
         print(f"disable current mode {self.current_thermal_mode}")
         if self.thermal_checkbox.isChecked():
             self.thermal_menu_group.setEnabled(True)
+            self.bios_thermal_control_on = True
+            self.thermal_control_menu.setTitle("BIOS Thermal Management")
         else:
             self.thermal_menu_group.setEnabled(False)
+            self.bios_thermal_control_on = False
+            self.thermal_control_menu.setTitle("I8K Thermal Management")
 
     def get_smbios_information(self):
         if self.p is None:
