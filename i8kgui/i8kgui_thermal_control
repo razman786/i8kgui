@@ -36,6 +36,20 @@ then
 	status="disable"
 fi
 
+if [[ ! -f "/usr/sbin/smbios-thermal-ctl2" ]]
+then
+  printf "Error smbios-thermal-ctl not found" >&2
+  exit 1
+elif [[ ! -f "/etc/systemd/system/multi-user.target.wants/i8kmon.service" ]]
+then
+  printf "Error i8kmon.service not found" >&2
+  exit 1
+elif [[ ! -f "/etc/systemd/system/multi-user.target.wants/dell-bios-fan-control.service" ]]
+then
+  printf "Error dell-bios-fan-control.service not found" >&2
+  exit 1
+fi
+
 if [[ $status == "enable" ]]
 then
   systemctl stop i8kmon.service && systemctl stop dell-bios-fan-control.service
