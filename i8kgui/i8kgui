@@ -192,7 +192,7 @@ class I8kGui(QMainWindow):
                 self.p.readyReadStandardOutput.connect(self.handle_thermal_stdout)
                 self.p.readyReadStandardError.connect(self.handle_thermal_stderr)
                 self.p.stateChanged.connect(self.handle_process_state)
-                self.p.finished.connect(self.thermal_process_finished)  # Clean up once complete.
+                self.p.finished.connect(self.thermal_process_disable_finished)  # Clean up once complete.
                 self.p.start("pkexec", [str(thermal_file.resolve()), '--disable'])
         else:
             return False
