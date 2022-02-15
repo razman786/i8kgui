@@ -599,17 +599,6 @@ class I8kGui(QMainWindow):
                 self.power_status.setText(split_line[8].strip())
                 self.button_status.setText(split_line[9].strip())
 
-                """try:
-                    cpu_proc = open('/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq', 'r')
-                except IOError as e:
-                    self.critical_error = True
-                    self.tray.showMessage("i8kgui", f"Error cannot find /proc/cpuinfo.\n\n{e}",
-                                          icon=QSystemTrayIcon.Critical, msecs=10000)
-                else:
-                    line = cpu_proc.readline()  # output is only a single line.
-                    cpu_proc.close()
-                    mhz = int(line.strip('\n').strip())/1000
-                    self.cpu_mhz.setText(f"CPU Freq:                  {int(mhz)} MHz")"""
                 try:
                     cpu_proc = open('/proc/cpuinfo', 'r')
                 except IOError as e:
