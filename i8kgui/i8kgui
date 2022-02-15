@@ -326,7 +326,8 @@ class I8kGui(QMainWindow):
                         if key.startswith('Fan Mode'):
                             mode = key.split('Fan Mode ')
                             if int(mode[1]) == self.left_fan_mode:
-                                title = f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
+                                title = \
+                                    f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
                                 self.fan_mode_menu_item.setText(title)
                                 self.thermal_control_menu.addAction(self.fan_mode_menu_item)
                                 self.thermal_menu_group.addAction(self.fan_mode_menu_item)

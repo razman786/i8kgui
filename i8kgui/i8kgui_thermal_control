@@ -14,44 +14,37 @@
 
 # display help
 display_usage() {
-	echo -e "\nUsage: $0 [OPTION]\n"
-	echo -e "-e, --enable     enable BIOS thermal control\n"
-	echo -e "-d, --disable     disable BIOS thermal control\n"
-	}
+  echo -e "\nUsage: $0 [OPTION]\n"
+  echo -e "-e, --enable     enable BIOS thermal control\n"
+  echo -e "-d, --disable     disable BIOS thermal control\n"
+}
 
 # check whether user had supplied -h or --help.
-if [[ ( $1 == "--help") ||  $1 == "-h" ]]
-then
-	display_usage
-	exit 0
+if [[ ($1 == "--help") || $1 == "-h" ]]; then
+  display_usage
+  exit 0
 fi
 
-if [[ ( $1 == "--enable") ||  $1 == "-e" ]]
-then
-	status="enable"
+if [[ ($1 == "--enable") || $1 == "-e" ]]; then
+  status="enable"
 fi
 
-if [[ ( $1 == "--disable") ||  $1 == "-d" ]]
-then
-	status="disable"
+if [[ ($1 == "--disable") || $1 == "-d" ]]; then
+  status="disable"
 fi
 
-if [[ ! -f "/usr/sbin/smbios-thermal-ctl" ]]
-then
+if [[ ! -f "/usr/sbin/smbios-thermal-ctl" ]]; then
   printf "Error smbios-thermal-ctl not found" >&2
   exit 1
-elif [[ ! -f "/lib/systemd/system/i8kmon.service" ]]
-then
+elif [[ ! -f "/lib/systemd/system/i8kmon.service" ]]; then
   printf "Error i8kmon.service not found" >&2
   exit 1
-elif [[ ! -f "/etc/systemd/system/dell-bios-fan-control.service" ]]
-then
+elif [[ ! -f "/etc/systemd/system/dell-bios-fan-control.service" ]]; then
   printf "Error dell-bios-fan-control.service not found" >&2
   exit 1
 fi
 
-if [[ $status == "enable" ]]
-then
+if [[ $status == "enable" ]]; then
   systemctl stop i8kmon.service
   systemctl stop dell-bios-fan-control.service
   smbios-thermal-ctl -i | grep -A 4 'Supported Thermal Modes'
