@@ -98,8 +98,8 @@ running.
 sudo systemctl start dell-bios-fan-control.service && sudo systemctl start i8kmon.service
 ```
 
-i8kgui can be loaded by searching in Ubuntu's `Show Applications` icon in the application dock. Optionally i8kgui can be
-loaded from a terminal and executing `i8kgui`.
+i8kgui can be loaded by searching in Ubuntu's `Show Applications` icon in the application dock. Optionally, i8kgui can be
+loaded from a terminal by executing `i8kgui`.
 
 By default, i8kgui displays i8kutils information, however it does facilitate thermal management using the (SM)BIOS. If you
 enable this feature typically four fan modes will be available. Please note that, using 'Quiet', or 'Cool Bottom' modes
