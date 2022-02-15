@@ -27,6 +27,7 @@ class I8kGui(QMainWindow):
         self.settings = QSettings()
         self.critical_error = False
         self.degree_sign = u'\N{DEGREE SIGN}'
+        self.use_cpu_ave_freq = False
         self.p_state = None
         self.p = None
         self.smbios_data = []
@@ -612,10 +613,14 @@ class I8kGui(QMainWindow):
                             mhz = int(line.split(':')[1].strip('\n').split('.')[0].strip())
                             all_mhz.append(mhz)
 
-                    total_mhz = 0
-                    for m in all_mhz:
-                        total_mhz = total_mhz + m
-                    mhz = int(total_mhz / len(all_mhz))
+                    if self.use_cpu_ave_freq:
+                        total_mhz = 0
+                        for m in all_mhz:
+                            total_mhz = total_mhz + m
+                        mhz = int(total_mhz / len(all_mhz))
+                    else:
+                        all_mhz.sort()
+                        mhz = all_mhz[-1]
                     self.cpu_mhz.setText(f"CPU Freq:                  {mhz} MHz")
                     cpu_proc.close()
 
