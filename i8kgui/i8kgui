@@ -73,8 +73,8 @@ class I8kGui(QMainWindow):
         self.cpu_temp = QAction("CPU Temp:                ")
         self.left_fan_rpm = QAction("Left Fan RPM:          ")
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
-        self.left_fan_status = QAction("Left Fan Status:      ")
-        self.right_fan_status = QAction("Right Fan Status:   ")
+        self.left_fan_status = QAction("Left Fan Mode:       ")
+        self.right_fan_status = QAction("Right Fan Mode:    ")
         self.load_sys_tray()
 
     def close_app(self):
@@ -611,8 +611,8 @@ class I8kGui(QMainWindow):
                 self.cpu_temp.setText(f"CPU Temp:                {split_line[3].strip()}{self.degree_sign}C")
                 self.left_fan_rpm.setText(f"Left Fan RPM:          {split_line[6].strip()}")
                 self.right_fan_rpm.setText(f"Right Fan RPM:       {split_line[7].strip()}")
-                self.left_fan_status.setText(f"Left Fan Status:      {split_line[4].strip()}")
-                self.right_fan_status.setText(f"Right Fan Status:   {split_line[5].strip()}")
+                self.left_fan_status.setText(f"Left Fan Mode:       {split_line[4].strip()}")
+                self.right_fan_status.setText(f"Right Fan Mode:    {split_line[5].strip()}")
                 if self.left_fan_mode != int(split_line[4].strip()) or self.right_fan_mode != int(
                         split_line[5].strip()):
                     self.left_fan_mode = int(split_line[4].strip())
