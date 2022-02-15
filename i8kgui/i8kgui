@@ -44,6 +44,7 @@ class I8kGui(QMainWindow):
         self.monitor_interval = 1000
         self.always_on_checkbox = QCheckBox()
         self.thermal_checkbox = QCheckBox()
+        self.cpu_ave_freq_checkbox = QCheckBox()
         self.interval_input = QLineEdit()
         self.settings_dialog = QDialog()
         self.info_dialog = QDialog()
@@ -93,6 +94,15 @@ class I8kGui(QMainWindow):
         # load monitoring interval setting
         self.monitor_interval = int(self.settings.value('interval', 1000))
 
+        # load average CPU freq. setting
+        use_cpu_ave_freq = self.settings.value('use_cpu_ave_freq')
+        if use_cpu_ave_freq and use_cpu_ave_freq.lower() == 'true':
+            self.use_cpu_ave_freq = True
+            self.cpu_ave_freq_checkbox.setCheckState(Qt.Checked)
+        else:
+            self.use_cpu_ave_freq = False
+            self.cpu_ave_freq_checkbox.setCheckState(Qt.Unchecked)
+
         # load smbios information from config
         info = list(self.settings.value('smbios', []))
         if info:
@@ -129,6 +139,7 @@ class I8kGui(QMainWindow):
         self.settings.setValue('supported_thermal_modes', self.supported_thermal_modes)
         self.settings.setValue('bios_thermal_control_on', self.bios_thermal_control_on)
         self.settings.setValue('always_on', self.always_on)
+        self.settings.setValue('use_cpu_ave_freq', self.use_cpu_ave_freq)
         self.settings.setValue('interval', self.monitor_interval)
         if self.smbios_info:
             # preserve ordering by storing a list
@@ -154,6 +165,12 @@ class I8kGui(QMainWindow):
             self.always_on = False
             if self.monitorTimer.isActive():
                 self.monitorTimer.stop()
+
+    def enable_ave_cpu_freq(self, checked):
+        if checked == Qt.Checked:
+            self.use_cpu_ave_freq = True
+        else:
+            self.use_cpu_ave_freq = False
 
     def save_dialog_settings(self):
         if self.monitor_interval != int(self.interval_input.text()):
@@ -460,10 +477,16 @@ class I8kGui(QMainWindow):
 
     def create_settings_dialog(self):
         self.save_button.setMaximumWidth(100)
+
         self.always_on_checkbox.setText("Collect statistics continuously")
         self.always_on_checkbox.stateChanged.connect(self.always_collect)
+
         self.thermal_checkbox.setText("Enable BIOS thermal management")
         self.thermal_checkbox.stateChanged.connect(self.enable_thermal_control)
+
+        self.cpu_ave_freq_checkbox.setText("Display average CPU freq.")
+        self.cpu_ave_freq_checkbox.stateChanged.connect(self.enable_ave_cpu_freq)
+
         self.interval_input.setValidator(QIntValidator())
         self.interval_input.setMaxLength(6)
         self.interval_input.setText(str(self.monitor_interval))
@@ -472,6 +495,7 @@ class I8kGui(QMainWindow):
         f_layout = QFormLayout()
         f_layout.addRow("(requires password)", self.thermal_checkbox)
         f_layout.addRow(" ", self.always_on_checkbox)
+        f_layout.addRow(" ", self.cpu_ave_freq_checkbox)
         f_layout.addRow(" ", None)
         f_layout.addRow("Monitoring Interval (milliseconds):", self.interval_input)
         f_layout.addRow(" ", None)
