@@ -70,6 +70,7 @@ class I8kGui(QMainWindow):
         self.tray = None
         self.first_load = True
         self.cpu_mhz = QAction("CPU MHz:                ")
+        self.cpu_governor = QAction("CPU Governor:               ")
         self.cpu_temp = QAction("CPU Temp:                ")
         self.left_fan_rpm = QAction("Left Fan RPM:          ")
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
@@ -86,7 +87,7 @@ class I8kGui(QMainWindow):
         self.tray.showMessage("i8kgui", msg, icon=QSystemTrayIcon.Critical, msecs=10000)
 
     def thermal_error_dialog(self, cmd='disable', msg="Critical Service Error. Please enter your password."):
-        error_dialog = QMessageBox(None, "i8kgui", msg)
+        error_dialog = QMessageBox(QMessageBox.Icon.Critical, "i8kgui", msg)
         error_dialog.setText(msg)
         button = error_dialog.exec()
         if button == QMessageBox.Ok:
@@ -141,6 +142,7 @@ class I8kGui(QMainWindow):
         if supported_thermal_modes is None:
             self.supported_thermal_modes = []
         else:
+            # noinspection PyTypeChecker
             self.supported_thermal_modes = list(supported_thermal_modes)
 
         # check current status of i8kmon services.
@@ -600,6 +602,7 @@ class I8kGui(QMainWindow):
 
             # setup display
             self.tray_menu.addAction(self.cpu_mhz)
+            self.tray_menu.addAction(self.cpu_governor)
             self.tray_menu.addAction(self.cpu_temp)
             self.tray_menu.addAction(self.left_fan_rpm)
             self.tray_menu.addAction(self.right_fan_rpm)
@@ -626,6 +629,7 @@ class I8kGui(QMainWindow):
             self.tray.setToolTip("i8kgui")
             self.tray.setVisible(True)
         else:
+            # noinspection PyTypeChecker
             QMessageBox.critical(None, "i8kgui", "Unable to locate system tray on this system.")
             self.close_app()
 
@@ -719,6 +723,19 @@ class I8kGui(QMainWindow):
                         mhz = all_mhz[-1]
                     self.cpu_mhz.setText(f"CPU Freq:                  {mhz} MHz")
                     cpu_proc.close()
+
+                try:
+                    gov_sys = open('/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor', 'r')
+                except IOError as e:
+                    self.critical_error = True
+                    self.tray.showMessage("i8kgui",
+                                          f"Error cannot find /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
+                                          f"\n\n{e}",
+                                          icon=QSystemTrayIcon.Critical, msecs=10000)
+                else:
+                    gov = gov_sys.readline().strip()
+                    gov_sys.close()
+                    self.cpu_governor.setText(f"CPU Governor:        {gov}")
 
                 self.tray.activated.emit(QSystemTrayIcon.Trigger)  # send fake single-click event as workaround
 
