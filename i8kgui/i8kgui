@@ -81,6 +81,17 @@ class I8kGui(QMainWindow):
         self.save_settings()
         app.quit()
 
+    def error_message(self, msg):
+        self.critical_error = True
+        self.tray.showMessage("i8kgui", msg, icon=QSystemTrayIcon.Critical, msecs=10000)
+
+    def thermal_error_dialog(self, cmd='disable', msg="Critical Service Error. Please enter your password."):
+        error_dialog = QMessageBox(None, "i8kgui", msg)
+        error_dialog.setText(msg)
+        button = error_dialog.exec()
+        if button == QMessageBox.Ok:
+            self.bios_thermal_control(op=cmd)
+
     def load_settings(self):
         # load continuous data collection setting
         always_on = self.settings.value('always_on')
@@ -110,29 +121,41 @@ class I8kGui(QMainWindow):
             self.smbios_info = {info[i][0]: info[i][1] for i in range(0, len(info))}  # convert data to dict
             self.smbios_button.setDisabled(True)
 
+        # load bios thermal mode setting
+        bios_thermal_control_on = self.settings.value('bios_thermal_control_on')
+
+        # load current mode
+        self.current_thermal_mode = self.settings.value('current_thermal_mode')
+
         # load supported thermal modes setting
         supported_thermal_modes = self.settings.value('supported_thermal_modes')
+
+        # setup bios thermal mode setting
+        if bios_thermal_control_on is None:
+            self.bios_thermal_control_on = False
+        elif bios_thermal_control_on.lower() == 'true':
+            self.bios_thermal_control_on = True
+        elif bios_thermal_control_on.lower() == 'false':
+            self.bios_thermal_control_on = False
+
         if supported_thermal_modes is None:
             self.supported_thermal_modes = []
         else:
             self.supported_thermal_modes = list(supported_thermal_modes)
 
-        # load thermal mode settings
-        bios_thermal_control_on = self.settings.value('bios_thermal_control_on')
-        if bios_thermal_control_on is not None:
-            if bios_thermal_control_on.lower() == 'true':
-                self.bios_thermal_control_on = True
-                self.current_thermal_mode = self.settings.value('current_thermal_mode')
-                self.thermal_checkbox.setChecked(True)
-                self.thermal_control_menu.setTitle("BIOS Thermal Management")
-            else:
-                self.bios_thermal_control_on = False
-                self.thermal_control_menu.setTitle("I8K Thermal Management")
-        else:
-            self.bios_thermal_control_on = False
-            self.thermal_control_menu.setTitle("I8K Thermal Management")
+        # check current status of i8kmon services.
+        i8k_is_active = self.check_thermal_control()
 
-        self.build_thermal_menu()
+        # set system to last known settings or default
+        if not self.bios_thermal_control_on and not i8k_is_active:
+            self.thermal_error_dialog(cmd='disable')
+        elif self.bios_thermal_control_on and i8k_is_active:
+            self.thermal_error_dialog(cmd='enable')
+
+        if self.bios_thermal_control_on:
+            self.thermal_checkbox.setChecked(True)
+        else:
+            self.thermal_checkbox.setChecked(False)
 
     def save_settings(self):
         self.settings.setValue('current_thermal_mode', self.current_thermal_mode)
@@ -192,6 +215,51 @@ class I8kGui(QMainWindow):
             split_item = item.split('\n')
             for part_item in split_item:
                 self.smbios_data.append(part_item.strip())
+
+    def check_thermal_control(self):
+        if self.p is None:
+            active_services = []
+            # check service files are available
+            dell_service_file = Path('/etc/systemd/system/dell-bios-fan-control.service')
+            if not dell_service_file.is_file():
+                print("Error systemctl dell-bios-fan-control.service not found")
+                return False
+
+            i8k_service_file = Path('/lib/systemd/system/i8kmon.service')
+            if not i8k_service_file.is_file():
+                print("Error systemctl i8kmon.service not found")
+                return False
+
+            # check which system services are active.
+            self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
+            self.p.start("systemctl", ['is-active', 'i8kmon.service'])
+            self.p.waitForFinished()
+            result = self.p.readLine()
+            output = bytes(result).decode("utf8")
+            is_active = output.strip('\n')
+            if is_active == "active":
+                active_services.append(True)
+
+            self.p.close()
+            self.p = None
+            self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
+            self.p.start("systemctl", ['is-active', 'dell-bios-fan-control.service'])
+            self.p.waitForFinished()
+            result = self.p.readLine()
+            output = bytes(result).decode("utf8")
+            is_active = output.strip('\n')
+            self.p.close()
+            self.p = None
+            if is_active == "active":
+                active_services.append(True)
+
+            # i8kmon requires 2 services active, or
+            # no services active (BIOS mode). Any other
+            # combination is a fail.
+            if len(active_services) == 2:
+                return True
+            else:
+                return False
 
     def bios_thermal_control(self, op=None):
         if self.p is None:
@@ -318,9 +386,10 @@ class I8kGui(QMainWindow):
                     for action in actions:
                         if action.text() == self.current_thermal_mode:
                             action.setChecked(True)
+                else:
+                    print('No modes')
             elif not self.bios_thermal_control_on:
                 self.i8k_info = self.get_i8k_information()
-                print(f'info {self.i8k_info}')
                 if self.i8k_info:
                     for key, value in self.i8k_info.items():
                         if key.startswith('Fan Mode'):
@@ -349,6 +418,8 @@ class I8kGui(QMainWindow):
 
                     self.thermal_menu_group.setEnabled(True)
                     self.thermal_control_menu.setTitle("I8K Thermal Management")
+        else:
+            print("menu build error")
 
     def get_i8k_information(self):
         if not self.critical_error:
