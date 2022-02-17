@@ -325,8 +325,9 @@ class I8kGui(QMainWindow):
         if self.current_thermal_mode_data:
             self.current_thermal_mode = self.current_thermal_mode_data[1].title().replace("-", " ")
             self.current_thermal_mode_data = []
-        print(f"supported modes: {self.supported_thermal_modes}")
-        print(f"current mode {self.current_thermal_mode}")
+        # debug
+        # print(f"supported modes: {self.supported_thermal_modes}")
+        # print(f"current mode {self.current_thermal_mode}")
         if self.thermal_checkbox.isChecked() and self.current_thermal_mode is not None:
             self.bios_thermal_control_on = True
             self.switch_thermal_menu()
@@ -352,8 +353,9 @@ class I8kGui(QMainWindow):
         if self.current_thermal_mode_data:
             self.current_thermal_mode = self.current_thermal_mode_data[1].title().replace("-", " ")
             self.current_thermal_mode_data = []
-        print(f"disable supported modes: {self.supported_thermal_modes}")
-        print(f"disable current mode {self.current_thermal_mode}")
+        # debug
+        # print(f"disable supported modes: {self.supported_thermal_modes}")
+        # print(f"disable current mode {self.current_thermal_mode}")
         if self.thermal_checkbox.isChecked() and self.current_thermal_mode is not None:
             self.bios_thermal_control_on = True
             self.switch_thermal_menu()
@@ -389,8 +391,6 @@ class I8kGui(QMainWindow):
                     for action in actions:
                         if action.text() == self.current_thermal_mode:
                             action.setChecked(True)
-                else:
-                    print('No modes')
             elif not self.bios_thermal_control_on:
                 self.i8k_info = self.get_i8k_information()
                 if self.i8k_info:
@@ -425,8 +425,6 @@ class I8kGui(QMainWindow):
 
                     self.thermal_menu_group.setEnabled(True)
                     self.thermal_control_menu.setTitle("I8K Thermal Management")
-        else:
-            print("menu build error")
 
     def get_i8k_information(self):
         if not self.critical_error:
@@ -706,6 +704,7 @@ class I8kGui(QMainWindow):
                 self.power_status.setText(split_line[8].strip())
                 self.button_status.setText(split_line[9].strip())
 
+                # gather current CPU MHz.
                 try:
                     cpu_proc = open('/proc/cpuinfo', 'r')
                 except IOError as e:
@@ -730,6 +729,7 @@ class I8kGui(QMainWindow):
                     self.cpu_mhz.setText(f"CPU Freq:                  {mhz} MHz")
                     cpu_proc.close()
 
+                # gather current CPU governor
                 try:
                     gov_sys = open('/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor', 'r')
                 except IOError as e:
@@ -741,8 +741,9 @@ class I8kGui(QMainWindow):
                 else:
                     gov = gov_sys.readline().strip()
                     gov_sys.close()
-                    self.cpu_governor.setText(f"CPU Governor:        {gov}")
+                    self.cpu_governor.setText(f"CPU Governor:        {gov.capitalize()}")
 
+                # gather power supply status
                 try:
                     pwr_sys = open('/sys/class/power_supply/AC/online', 'r')
                 except IOError as e:
@@ -762,6 +763,7 @@ class I8kGui(QMainWindow):
                 self.tray.activated.emit(QSystemTrayIcon.Trigger)  # send fake single-click event as workaround
 
     def update_i8k_ac_power(self):
+        # update i8k thermal menu fan mode based on A/C power supply status
         if self.i8k_info:
             for key, value in self.i8k_info.items():
                 if key.startswith('Fan Mode'):
@@ -775,6 +777,7 @@ class I8kGui(QMainWindow):
                         break
 
     def update_i8k_thermal(self):
+        # update i8k thermal menu. Activated when i8k changes fan mode.
         if not self.i8k_info:
             self.i8k_info = self.get_i8k_information()
         if self.i8k_info:
@@ -838,7 +841,7 @@ if __name__ == '__main__':
     app = QApplication([])
     app.setOrganizationName("i8kgui")
     app.setApplicationName("i8kgui")
-    app.setApplicationVersion("0.2")
+    app.setApplicationVersion("0.4")
 
     # setup Dark Mode QPalette - initial setup
     palette = QPalette()
