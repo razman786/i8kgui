@@ -76,6 +76,7 @@ class I8kGui(QMainWindow):
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
         self.left_fan_status = QAction("Left Fan Mode:       ")
         self.right_fan_status = QAction("Right Fan Mode:    ")
+        self.ac_power_supply_on = None
         self.load_sys_tray()
 
     def close_app(self):
@@ -397,8 +398,12 @@ class I8kGui(QMainWindow):
                         if key.startswith('Fan Mode'):
                             mode = key.split('Fan Mode ')
                             if int(mode[1]) == self.left_fan_mode:
-                                title = \
-                                    f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
+                                if self.ac_power_supply_on:
+                                    title = \
+                                        f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
+                                else:
+                                    title = \
+                                        f"{key}: Low: {value[2]}{self.degree_sign}C  High: {value[3]}{self.degree_sign}C"
                                 self.fan_mode_menu_item.setText(title)
                                 self.thermal_control_menu.addAction(self.fan_mode_menu_item)
                                 self.thermal_menu_group.addAction(self.fan_mode_menu_item)
@@ -693,6 +698,7 @@ class I8kGui(QMainWindow):
                     self.left_fan_mode = int(split_line[4].strip())
                     self.right_fan_mode = int(split_line[5].strip())
                     self.update_i8k_thermal()
+                self.update_i8k_ac_power()
 
                 self.i8k_format_version.setText(split_line[0].strip())
                 self.bios_version.setText(split_line[1].strip())
@@ -737,7 +743,36 @@ class I8kGui(QMainWindow):
                     gov_sys.close()
                     self.cpu_governor.setText(f"CPU Governor:        {gov}")
 
+                try:
+                    pwr_sys = open('/sys/class/power_supply/AC/online', 'r')
+                except IOError as e:
+                    self.critical_error = True
+                    self.tray.showMessage("i8kgui",
+                                          f"Error cannot find /sys/class/power_supply/AC/online."
+                                          f"\n\n{e}",
+                                          icon=QSystemTrayIcon.Critical, msecs=10000)
+                else:
+                    pwr_ac = pwr_sys.readline().strip()
+                    pwr_sys.close()
+                    if int(pwr_ac) == 1:
+                        self.ac_power_supply_on = True
+                    else:
+                        self.ac_power_supply_on = False
+
                 self.tray.activated.emit(QSystemTrayIcon.Trigger)  # send fake single-click event as workaround
+
+    def update_i8k_ac_power(self):
+        if self.i8k_info:
+            for key, value in self.i8k_info.items():
+                if key.startswith('Fan Mode'):
+                    mode = key.split('Fan Mode ')
+                    if int(mode[1]) == self.left_fan_mode:
+                        if self.ac_power_supply_on:
+                            title = f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
+                        else:
+                            title = f"{key}: Low: {value[2]}{self.degree_sign}C  High: {value[3]}{self.degree_sign}C"
+                        self.fan_mode_menu_item.setText(title)
+                        break
 
     def update_i8k_thermal(self):
         if not self.i8k_info:
@@ -747,7 +782,10 @@ class I8kGui(QMainWindow):
                 if key.startswith('Fan Mode'):
                     mode = key.split('Fan Mode ')
                     if int(mode[1]) == self.left_fan_mode:
-                        title = f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
+                        if self.ac_power_supply_on:
+                            title = f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
+                        else:
+                            title = f"{key}: Low: {value[2]}{self.degree_sign}C  High: {value[3]}{self.degree_sign}C"
                         self.fan_mode_menu_item.setText(title)
                 elif key.startswith('Left Speed'):
                     title = f"Max {key}: {value[self.left_fan_mode]}"
