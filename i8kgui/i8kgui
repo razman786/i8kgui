@@ -400,10 +400,12 @@ class I8kGui(QMainWindow):
                             if int(mode[1]) == self.left_fan_mode:
                                 if self.ac_power_supply_on:
                                     title = \
-                                        f"{key}: Low: {value[0]}{self.degree_sign}C  High: {value[1]}{self.degree_sign}C"
+                                        f"{key}: Low: {value[0]}{self.degree_sign}C  " \
+                                        f"High: {value[1]}{self.degree_sign}C"
                                 else:
                                     title = \
-                                        f"{key}: Low: {value[2]}{self.degree_sign}C  High: {value[3]}{self.degree_sign}C"
+                                        f"{key}: Low: {value[2]}{self.degree_sign}C  " \
+                                        f"High: {value[3]}{self.degree_sign}C"
                                 self.fan_mode_menu_item.setText(title)
                                 self.thermal_control_menu.addAction(self.fan_mode_menu_item)
                                 self.thermal_menu_group.addAction(self.fan_mode_menu_item)
