@@ -1,9 +1,8 @@
 import os
-from pathlib import Path
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
-__version__ = "0.4"
+__version__ = "0.5"
 
 requirements = [
     'PySide6',
@@ -16,17 +15,15 @@ scripts = [
 
 
 def get_data_files():
-    if os.geteuid() == 0:
-        files = [
-            (f"/usr/share/applications", ['i8kgui/desktop/i8kgui.desktop']),
-            (f"/usr/share/icons", ['i8kgui/icons/i8kgui_icon.png']),
+    return [
+            ("/usr/share/applications", ['i8kgui/desktop/i8kgui.desktop']),
+            ("/usr/share/icons", ['i8kgui/icons/i8kgui_icon.png']),
+        ] if os.geteuid() == 0 else [
+            ("{Path.home()}/.local/share/applications",
+             ['i8kgui/desktop/i8kgui.desktop']),
+            ("{Path.home()}/.local/share/icons",
+             ['i8kgui/icons/i8kgui_icon.png']),
         ]
-    else:
-        files = [
-            (f"{Path.home()}/.local/share/applications", ['i8kgui/desktop/i8kgui.desktop']),
-            (f"{Path.home()}/.local/share/icons", ['i8kgui/icons/i8kgui_icon.png']),
-        ]
-    return files
 
 
 setup(
