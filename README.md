@@ -12,8 +12,7 @@ as a quick hack for my own needs.
   <img src="https://user-images.githubusercontent.com/7116312/153890711-452b82ff-dc22-437e-b541-a651064d9b23.png" alt="info" width="250" />
 </p>
 
-i8kgui uses i8kutils to gather information such as CPU temperature and fan speeds. It attempts to only update GUI values
-when visibly active, and also supports thermal management using (SM)BIOS modes.
+i8kgui uses i8kutils to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
 
 ### Features
 
@@ -24,7 +23,6 @@ when visibly active, and also supports thermal management using (SM)BIOS modes.
 * Displays i8k module information
 * Supports the gathering of (SM)BIOS information
 * Option to display CPU frequency as either the highest (default) or the average value for all CPU cores
-* Only updates the GUI values when visibly active
 
 ## Prerequisites
 
