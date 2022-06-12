@@ -651,6 +651,7 @@ class I8kGui(QMainWindow):
             # setup display
             self.tray_menu.addAction(self.cpu_mhz)
             self.tray_menu.addAction(self.cpu_governor)
+            self.connect_cpupower()
             self.tray_menu.addAction(self.cpu_temp)
             self.tray_menu.addAction(self.left_fan_rpm)
             self.tray_menu.addAction(self.right_fan_rpm)
@@ -679,6 +680,23 @@ class I8kGui(QMainWindow):
             QMessageBox.critical(
                 None, "i8kgui", "Unable to locate system tray on this system.")
             self.close_app()
+
+    def connect_cpupower(self):
+        # connect to cpupower-gui if found
+        cpupower_file = Path(str(shutil.which("cpupower-gui")))
+        if cpupower_file.is_file():
+            self.cpu_governor.triggered.connect(self.show_cpupower)
+
+    def show_cpupower(self):
+        self.cpupower = QProcess()
+        self.cpupower.start("cpupower-gui")
+        self.cpupower.waitForFinished()
+        result = self.cpupower.readLine()
+        output = bytes(result).decode("utf8")
+        if error := output.strip('\n'):
+            print(f"Error: failed to load cpupower-gui {error}")
+        self.cpupower.close()
+        self.cpupower = None
 
     def thermal_mode_selection(self, checked):
         if self.bios_thermal_control_on:
