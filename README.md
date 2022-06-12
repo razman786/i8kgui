@@ -1,12 +1,6 @@
 # i8kgui
 
-|actionsbadge| |versionbadge|
-
-.. |actionsbadge| image:: https://github.com/razman786/i8kgui/workflows/i8kgui%20CI/badge.svg
-    :target: https://github.com/razman786/i8kgui/actions
-.. |versionbadge| image:: https://img.shields.io/github/v/release/razman786/i8kgui
-    :target: https://github.com/razman786/i8kgui/releases
-    :alt: GitHub release (latest by date)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/razman786/i8kgui/i8kgui%20CI?label=i8kgui%20CI)  ![GitHub release (latest by date)](https://img.shields.io/github/v/release/razman786/i8kgui)
 
 ## Introduction
 
