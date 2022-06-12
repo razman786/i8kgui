@@ -4,7 +4,7 @@ on:
   push:
     branches: [ master, development ]
   pull_request:
-    branches: [ master, development ]
+    branches: [ master ]
 
 jobs:
   # Ubuntu 20.04
@@ -28,7 +28,7 @@ jobs:
     - name: Installation
       id: install
       run: |
-        python3 setup.py install
+        python3 setup.py install --user
 
     # provide summary and ouput log files upon failure
     - name: Actions Failed
