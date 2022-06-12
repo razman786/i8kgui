@@ -1,5 +1,7 @@
 # i8kgui
 
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/razman786/i8kgui/i8kgui%20CI?label=i8kgui%20CI)  ![GitHub release (latest by date)](https://img.shields.io/github/v/release/razman786/i8kgui)
+
 ## Introduction
 
 A simple system tray GUI to display useful information from [i8kutils](https://github.com/vitorafsr/i8kutils) - created

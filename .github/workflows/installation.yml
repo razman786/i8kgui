@@ -1,0 +1,48 @@
+name: i8kgui CI
+
+on:
+  push:
+    branches: [ master, development ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  # Ubuntu 20.04
+  build-2004:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    
+    # create log files
+    - name: Set up Logging
+      run: |
+        touch ${{ runner.temp }}/log
+
+    # setup compatible with 'act'
+    - name: Set up runner VM
+      id: setup-runner
+      run: |
+        sudo apt update > ${{ runner.temp }}/log 2>&1
+        sudo apt -y install python3-pip > ${{ runner.temp }}/log 2>&1
+
+    - name: Installation
+      id: install
+      run: |
+        python3 setup.py install --user
+
+    # provide summary and ouput log files upon failure
+    - name: Actions Failed
+      if: failure()
+      run: |
+        if [[ ${{ steps.setup-runner.outcome }} == 'failure' ]] || [[ ${{ steps.install-deps.outcome }} == 'failure' ]]
+        then
+          echo "==== System log output ===="
+          cat ${{ runner.temp }}/log
+          echo "==== End system log output ===="
+          echo ""
+        echo "==== Step Outcomes ===="
+        echo "setup-runner:       ${{ steps.setup-runner.outcome }}"
+        echo "install:            ${{ steps.install.outcome }}"
+        echo ""
+        exit 2
+

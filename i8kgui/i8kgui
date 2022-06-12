@@ -91,13 +91,6 @@ class I8kGui(QMainWindow):
         self.save_settings()
         app.quit()
 
-    def error_message(self, msg):
-        self.critical_error = True
-        self.tray.showMessage("i8kgui",
-                              msg,
-                              icon=QSystemTrayIcon.Critical,
-                              msecs=10000)
-
     def thermal_error_dialog(self, cmd='disable',
                              msg="Critical Service Error. "
                              "Please enter your password."):
@@ -239,7 +232,7 @@ class I8kGui(QMainWindow):
             print("Error systemctl i8kmon.service not found")
             return False
         # check which system services are active.
-        # Keep a reference to the QProcess (e.g. on self)
+        # keep a reference to the QProcess (e.g. on self)
         # while it's running.
         self.p = QProcess()
         self.p.start("systemctl", ['is-active', 'i8kmon.service'])
@@ -251,7 +244,7 @@ class I8kGui(QMainWindow):
             active_services.append(True)
         self.p.close()
         self.p = None
-        # Keep a reference to the QProcess (e.g. on self)
+        # keep a reference to the QProcess (e.g. on self)
         # while it's running.
         self.p = QProcess()
         self.p.start("systemctl",
@@ -306,7 +299,11 @@ class I8kGui(QMainWindow):
     def handle_thermal_stderr(self):
         data = self.p.readAllStandardError()
         stderr = bytes(data).decode("utf8")
-        print(f"QProcess error {stderr}")
+        # check if pkexec passwd input cancelled
+        if 'Request dismissed' in stderr:
+            self.p.finished.emit(1, QProcess.CrashExit)
+        else:
+            print(f"Error: handle_thermal_stderr {stderr}")
 
     def handle_thermal_stdout(self):
         data = self.p.readAllStandardOutput()
@@ -315,52 +312,64 @@ class I8kGui(QMainWindow):
             split_stdout = stdout.split('\n')
             for item in split_stdout:
                 self.supported_thermal_modes_data.append(item.strip())
-        if stdout.startswith('Current Thermal Modes'):
+        elif stdout.startswith('Current Thermal Modes'):
             split_stdout = stdout.split('\n')
             for item in split_stdout:
                 self.current_thermal_mode_data.append(item.strip())
-        if stdout.startswith('Helper function to Set Thermal Mode'):
+        elif stdout.startswith('Helper function to Set Thermal Mode'):
             split_stdout = stdout.split(': ')
             self.current_thermal_mode = split_stdout[1].strip().title(
             ).replace("-", " ")
 
+    def close_process(self):
+        if self.p and self.p.state() != 0:
+            self.p.close()
+        self.p = None
+
+    def kill_process(self):
+        try:
+            self.p.terminate()
+            self.p.waitForFinished(1000)
+            self.p.kill()
+        except Exception:
+            pass
+        self.p = None
+
+    def thermal_selection_finished(self):
+        # bios mode change
+        if self.p and self.p.exitCode() != 0:
+            self.kill_process()
+            return
+        else:
+            self.close_process()
+            self.update_thermal_modes()
+
     def thermal_process_finished(self):
-        if self.p.exitCode() != 0:
-            self.p = None
+        # switch between i8k and bios modes
+        if self.p and self.p.exitCode() != 0:
+            self.kill_process()
             self.thermal_checkbox.setChecked(False)
             self.bios_thermal_control_on = False
             self.supported_thermal_modes_data = []
             self.current_thermal_mode_data = []
             return
         else:
-            self.p = None
-        if self.supported_thermal_modes_data:
-            self.supported_thermal_modes_data.pop(0)
-            self.supported_thermal_modes_data.pop()
-            self.supported_thermal_modes = self.supported_thermal_modes_data
-            self.supported_thermal_modes_data = []
-        if self.current_thermal_mode_data:
-            self.current_thermal_mode = self.current_thermal_mode_data[
-                1].title().replace("-", " ")
-            self.current_thermal_mode_data = []
-        # debug
-        # print(f"supported modes: {self.supported_thermal_modes}")
-        # print(f"current mode {self.current_thermal_mode}")
-        self.bios_thermal_control_on = bool(
-            self.thermal_checkbox.isChecked()
-            and self.current_thermal_mode is not None)
-        self.switch_thermal_menu()
+            self.close_process()
+            self.update_thermal_modes()
 
     def thermal_process_disable_finished(self):
-        if self.p.exitCode() != 0:
-            self.p = None
+        if self.p and self.p.exitCode() != 0:
+            self.kill_process()
             self.thermal_checkbox.setChecked(True)
             self.bios_thermal_control_on = True
             self.supported_thermal_modes_data = []
             self.current_thermal_mode_data = []
             return
         else:
-            self.p = None
+            self.close_process()
+            self.update_thermal_modes()
+
+    def update_thermal_modes(self):
         if self.supported_thermal_modes_data:
             self.supported_thermal_modes_data.pop(0)
             self.supported_thermal_modes_data.pop()
@@ -512,7 +521,10 @@ class I8kGui(QMainWindow):
     def handle_smbios_stderr(self):
         data = self.p.readAllStandardError()
         stderr = bytes(data).decode("utf8")
-        print(f"QProcess error {stderr}")
+        if 'Request dismissed' in stderr:
+            self.p.finished.emit(1, QProcess.CrashExit)
+        else:
+            print(f"Error: handle_smbios_stderr {stderr}")
 
     def handle_smbios_stdout(self):
         data = self.p.readAllStandardOutput()
@@ -528,8 +540,11 @@ class I8kGui(QMainWindow):
         self.p_state = states[state]
 
     def smbios_process_finished(self):
-        self.p = None
-        self.process_smbios_data()
+        if self.p and self.p.exitCode() != 0:
+            self.kill_process()
+        else:
+            self.close_process()
+            self.process_smbios_data()
 
     def process_smbios_data(self):
         if self.smbios_data:
@@ -698,7 +713,7 @@ class I8kGui(QMainWindow):
                     self.handle_thermal_stderr)
                 self.p.stateChanged.connect(self.handle_process_state)
                 # Clean up once complete.
-                self.p.finished.connect(self.thermal_process_finished)
+                self.p.finished.connect(self.thermal_selection_finished)
                 self.p.start("pkexec", [str(thermal_file.resolve()), t_args])
         else:
             print("Edit i8kmon config")  # TODO - add i8kmon config updating
