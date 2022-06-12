@@ -87,6 +87,13 @@ git checkout development && git pull
 python3 setup.py install --user
 ```
 
+### System-wide with polkit actions
+
+```
+git clone https://github.com/razman786/i8kgui
+sudo python3 setup.py install
+```
+
 ## Usage
 
 Please ensure that you have configured i8kutils before starting!
