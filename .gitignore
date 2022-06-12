@@ -238,3 +238,6 @@ fabric.properties
 .idea/codestream.xml
 
 .idea/
+
+# typings
+typings
