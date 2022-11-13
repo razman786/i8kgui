@@ -16,6 +16,7 @@
 #
 
 from pathlib import Path
+from glob import glob
 import shutil
 
 from PySide6 import QtCore
@@ -785,7 +786,16 @@ class I8kGui(QMainWindow):
             self.button_status.setText(split_line[9].strip())
             # gather current CPU MHz.
             try:
-                cpu_proc = open('/proc/cpuinfo', 'r')
+                cpu_procs = []
+                all_mhz = []
+                cpu_curr_freqs = "/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq"
+                cpu_freqs = glob(cpu_curr_freqs)
+                for cpu in cpu_freqs:
+                    proc = open(cpu, 'r')
+                    cpu_procs.append(proc)
+                    for line in proc:
+                        mhz = int(line.strip('\n')) // 1000
+                        all_mhz.append(mhz)
             except IOError as e:
                 self.critical_error = True
                 self.tray.showMessage(
@@ -794,13 +804,6 @@ class I8kGui(QMainWindow):
                     icon=QSystemTrayIcon.Critical,
                     msecs=10000)
             else:
-                all_mhz = []
-                for line in cpu_proc:
-                    if 'MHz' in line:
-                        mhz = int(
-                            line.split(':')[1].strip('\n').split('.')
-                            [0].strip())
-                        all_mhz.append(mhz)
                 if self.use_cpu_ave_freq:
                     total_mhz = sum(all_mhz)
                     mhz = total_mhz // len(all_mhz)
@@ -809,7 +812,8 @@ class I8kGui(QMainWindow):
                     mhz = all_mhz[-1]
                 self.cpu_mhz.setText(
                     f"CPU Freq:                  {mhz} MHz")
-                cpu_proc.close()
+                for cpu in cpu_procs:
+                    cpu.close()
             # gather current CPU governor
             try:
                 gov_sys = open(
