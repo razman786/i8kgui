@@ -79,7 +79,7 @@ class I8kGui(QMainWindow):
         self.tray = None
         self.first_load = True
         self.cpu_mhz = QAction("CPU MHz:                ")
-        self.cpu_details = QMenu("CPU Details:                ")
+        self.cpu_details = QMenu("Per CPU Core                ")
         self.cpu_freq_list = []
         self.cpu_curr_freqs = []
         self.cpu_num = psutil.cpu_count()
@@ -825,7 +825,7 @@ class I8kGui(QMainWindow):
                 self.cpu_mhz.setText(
                     f"CPU Freq:                  {mhz} MHz")
                 for i, c in enumerate(self.cpu_freq_list):
-                    c.setText(f"CPU {i}:\t   {all_mhz[i]} MHz\t   "
+                    c.setText(f"CPU {i}:\t   {all_mhz[i]} MHz\t     "
                               f"{psutil.sensors_temperatures()['coretemp'][i+1][1]}"
                               f"{self.degree_sign}C")
                 for cpu in cpu_procs:
