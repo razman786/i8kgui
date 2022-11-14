@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#  Copyright (c) 2022, Dr Rahim Lakhoo, razman786@gmail.com.
+# Copyright (c) 2022, Dr Rahim Lakhoo, razman786@gmail.com.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -16,8 +16,8 @@
 #
 
 from pathlib import Path
-from glob import glob
 import shutil
+import psutil
 
 from PySide6 import QtCore
 from PySide6.QtCore import QProcess, QSettings, QSize, Slot
@@ -79,6 +79,11 @@ class I8kGui(QMainWindow):
         self.tray = None
         self.first_load = True
         self.cpu_mhz = QAction("CPU MHz:                ")
+        self.cpu_details = QMenu("CPU Details:                ")
+        self.cpu_freq_list = []
+        self.cpu_curr_freqs = []
+        self.cpu_num = psutil.cpu_count()
+        self.build_cpu_menu()
         self.cpu_governor = QAction("CPU Governor:               ")
         self.cpu_temp = QAction("CPU Temp:                ")
         self.left_fan_rpm = QAction("Left Fan RPM:          ")
@@ -451,6 +456,14 @@ class I8kGui(QMainWindow):
             self.thermal_control_menu.setTitle(
                 "I8K Thermal Management")
 
+    def build_cpu_menu(self):
+        for i in range(self.cpu_num):
+            self.cpu_curr_freqs.append(
+                f"/sys/devices/system/cpu/cpu{i}/cpufreq/scaling_cur_freq")
+            c_action = QAction(f"CPU {i}", checkable=False)
+            self.cpu_details.addAction(c_action)
+            self.cpu_freq_list.append(c_action)
+
     def get_i8k_information(self):
         if self.critical_error:
             return
@@ -654,6 +667,7 @@ class I8kGui(QMainWindow):
             self.tray_menu.addAction(self.cpu_governor)
             self.connect_cpupower()
             self.tray_menu.addAction(self.cpu_temp)
+            self.tray_menu.addMenu(self.cpu_details)
             self.tray_menu.addAction(self.left_fan_rpm)
             self.tray_menu.addAction(self.right_fan_rpm)
             self.tray_menu.addAction(self.left_fan_status)
@@ -788,9 +802,7 @@ class I8kGui(QMainWindow):
             try:
                 cpu_procs = []
                 all_mhz = []
-                cpu_curr_freqs = "/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq"
-                cpu_freqs = glob(cpu_curr_freqs)
-                for cpu in cpu_freqs:
+                for cpu in self.cpu_curr_freqs:
                     proc = open(cpu, 'r')
                     cpu_procs.append(proc)
                     for line in proc:
@@ -812,6 +824,8 @@ class I8kGui(QMainWindow):
                     mhz = all_mhz[-1]
                 self.cpu_mhz.setText(
                     f"CPU Freq:                  {mhz} MHz")
+                for i, c in enumerate(self.cpu_freq_list):
+                    c.setText(f"CPU {i}:   {all_mhz[i]} MHz")
                 for cpu in cpu_procs:
                     cpu.close()
             # gather current CPU governor
