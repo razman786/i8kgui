@@ -825,7 +825,9 @@ class I8kGui(QMainWindow):
                 self.cpu_mhz.setText(
                     f"CPU Freq:                  {mhz} MHz")
                 for i, c in enumerate(self.cpu_freq_list):
-                    c.setText(f"CPU {i}:   {all_mhz[i]} MHz")
+                    c.setText(f"CPU {i}:\t   {all_mhz[i]} MHz\t   "
+                              f"{psutil.sensors_temperatures()['coretemp'][i+1][1]}"
+                              f"{self.degree_sign}C")
                 for cpu in cpu_procs:
                     cpu.close()
             # gather current CPU governor
