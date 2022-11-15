@@ -61,6 +61,7 @@ class I8kGui(QMainWindow):
         self.smbios_button = QPushButton("SMBIOS Information",
                                          self.info_dialog)
         self.cpu_model = QLabel(cpuinfo.get_cpu_info()['brand_raw'])
+        self.cpu_tdp = QLabel("N/A")
         self.i8k_format_version = QLabel("1")
         self.bios_version = QLabel("1")
         self.service_tag = QLabel("N/A")
@@ -466,6 +467,15 @@ class I8kGui(QMainWindow):
             self.cpu_details.addAction(c_action)
             self.cpu_freq_list.append(c_action)
 
+    def get_cpu_tdp(self):
+        tdp = Path(
+            "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
+        ).resolve()
+        if tdp.is_file():
+            with tdp.open('r') as f:
+                self.cpu_tdp.setText(f"{int(f.read().strip()) // 1000000} W")
+        return self.cpu_tdp
+
     def get_i8k_information(self):
         if self.critical_error:
             return
@@ -586,6 +596,7 @@ class I8kGui(QMainWindow):
 
         f_layout = QFormLayout()
         f_layout.addRow("CPU Model", self.cpu_model)
+        f_layout.addRow("CPU TDP", self.get_cpu_tdp())
         f_layout.addRow("i8k Format Version", self.i8k_format_version)
         f_layout.addRow("BIOS Version", self.bios_version)
         f_layout.addRow("Service Tag", self.service_tag)
