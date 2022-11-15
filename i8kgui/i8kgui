@@ -18,6 +18,7 @@
 from pathlib import Path
 import shutil
 import psutil
+import cpuinfo
 
 from PySide6 import QtCore
 from PySide6.QtCore import QProcess, QSettings, QSize, Slot
@@ -59,6 +60,7 @@ class I8kGui(QMainWindow):
         self.save_button = QPushButton("Save", self.settings_dialog)
         self.smbios_button = QPushButton("SMBIOS Information",
                                          self.info_dialog)
+        self.cpu_model = QLabel(cpuinfo.get_cpu_info()['brand_raw'])
         self.i8k_format_version = QLabel("1")
         self.bios_version = QLabel("1")
         self.service_tag = QLabel("N/A")
@@ -583,6 +585,7 @@ class I8kGui(QMainWindow):
         self.smbios_button.clicked.connect(self.get_smbios_information)
 
         f_layout = QFormLayout()
+        f_layout.addRow("CPU Model", self.cpu_model)
         f_layout.addRow("i8k Format Version", self.i8k_format_version)
         f_layout.addRow("BIOS Version", self.bios_version)
         f_layout.addRow("Service Tag", self.service_tag)
