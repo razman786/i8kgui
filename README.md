@@ -115,13 +115,18 @@ will reduce performance due to CPU power capping. Changing (SM)BIOS thermal mode
 
 Disabling (SM)BIOS thermal management will re-enable i8kutils's management and configuration.
 
-## Peronsal configuration
+## Personal configuration
 
 The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf` configuration file, used on a Dell XPS 7590 (Intel i7). 
 
-[Undervolt](https://github.com/georgewhewell/undervolt) is installed using the following settings to avoid thermal throttling `undervolt -v --gpu -0 --core -120 --cache -120 --uncore -120 --analogio 0 --temp 100`.
+[Undervolt](https://github.com/georgewhewell/undervolt) is installed using the following settings to avoid thermal throttling: 
+```
+undervolt -v --gpu -0 --core -120 --cache -120 --uncore -120 --analogio 0 --temp 100
+```
 
-Disclaimer: Please note the author takes *no* responsibility for any damage that occurs from using this software and/or configurations.
+## Disclaimer
+
+Please note the author takes *no responsibility for any damage* that occurs from using this software and/or configurations.
 
 ## Issues and requests
 
