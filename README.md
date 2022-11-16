@@ -26,6 +26,7 @@ i8kgui uses i8kutils to gather information such as CPU temperature and fan speed
 * Supports (SM)BIOS thermal management modes
 * Displays i8k module information
 * Supports the gathering of (SM)BIOS information
+* Loads [cpupower-gui](https://github.com/vagnum08/cpupower-gui) (if installed) when `CPU Governor` is clicked
 * Option to display CPU frequency as either the highest (default) or the average value for all CPU cores
 
 ## Prerequisites
@@ -70,6 +71,14 @@ On Ubuntu 20.04 please install the following package to interface with (SM)BIOS 
 
 ```
 sudo apt install python3-libsmbios
+```
+
+### cpupower-gui (optional)
+
+On Ubuntu 20.04 install the following optional package to change the CPU Governor:
+
+```
+sudo apt install cpupower-gui
 ```
 
 ## Installation
