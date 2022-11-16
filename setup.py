@@ -2,10 +2,11 @@ import os
 
 from setuptools import find_packages, setup
 
-__version__ = "0.6"
+__version__ = "0.7"
 
 requirements = [
     'PySide6',
+    'psutil',
 ]
 
 scripts = [

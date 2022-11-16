@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#  Copyright (c) 2022, Dr Rahim Lakhoo, razman786@gmail.com.
+# Copyright (c) 2022, Dr Rahim Lakhoo, razman786@gmail.com.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -17,6 +17,7 @@
 
 from pathlib import Path
 import shutil
+import warnings
 
 from PySide6 import QtCore
 from PySide6.QtCore import QProcess, QSettings, QSize, Slot
@@ -25,6 +26,9 @@ from PySide6.QtGui import (QAction, QActionGroup, QColor, QIcon, QIntValidator,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFormLayout,
                                QLabel, QLineEdit, QMainWindow, QMenu,
                                QMessageBox, QPushButton, QSystemTrayIcon)
+import cpuinfo
+import psutil
+warnings.filterwarnings("ignore")
 
 
 class I8kGui(QMainWindow):
@@ -58,6 +62,8 @@ class I8kGui(QMainWindow):
         self.save_button = QPushButton("Save", self.settings_dialog)
         self.smbios_button = QPushButton("SMBIOS Information",
                                          self.info_dialog)
+        self.cpu_model = QLabel(cpuinfo.get_cpu_info()['brand_raw'])
+        self.cpu_tdp = QLabel("N/A")
         self.i8k_format_version = QLabel("1")
         self.bios_version = QLabel("1")
         self.service_tag = QLabel("N/A")
@@ -78,6 +84,11 @@ class I8kGui(QMainWindow):
         self.tray = None
         self.first_load = True
         self.cpu_mhz = QAction("CPU MHz:                ")
+        self.cpu_details = QMenu("Per CPU Core                ")
+        self.cpu_freq_list = []
+        self.cpu_curr_freqs = []
+        self.cpu_num = psutil.cpu_count()
+        self.build_cpu_menu()
         self.cpu_governor = QAction("CPU Governor:               ")
         self.cpu_temp = QAction("CPU Temp:                ")
         self.left_fan_rpm = QAction("Left Fan RPM:          ")
@@ -450,12 +461,32 @@ class I8kGui(QMainWindow):
             self.thermal_control_menu.setTitle(
                 "I8K Thermal Management")
 
+    def build_cpu_menu(self):
+        for i in range(self.cpu_num):
+            self.cpu_curr_freqs.append(
+                f"/sys/devices/system/cpu/cpu{i}/cpufreq/scaling_cur_freq")
+            c_action = QAction(f"CPU {i}", checkable=False)
+            self.cpu_details.addAction(c_action)
+            self.cpu_freq_list.append(c_action)
+
+    def get_cpu_tdp(self):
+        tdp = Path(
+            "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
+        ).resolve()
+        if tdp.is_file():
+            with tdp.open('r') as f:
+                self.cpu_tdp.setText(f"{int(f.read().strip()) // 1000000} W")
+        return self.cpu_tdp
+
     def get_i8k_information(self):
         if self.critical_error:
             return
         info = {}
+        i8k_config = None
         try:
-            i8k_config = open('/etc/i8kmon.conf', 'r')
+            i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
+            if i8kmon_conf.is_file():
+                i8k_config = open(i8kmon_conf, 'r')
         except IOError as e:
             self.critical_error = True
             self.tray.showMessage("i8kgui",
@@ -464,35 +495,36 @@ class I8kGui(QMainWindow):
                                   icon=QSystemTrayIcon.Critical,
                                   msecs=10000)
         else:
-            for line in i8k_config:
-                if line.startswith('set config(t_high)'):
-                    conf = line.split('set config(t_high)')[1].strip()
-                    info['High CPU Temp'] = conf
-                if line.startswith('set config(0)'):
-                    split_line = line.split('{')
-                    conf = split_line[2].split('}')
-                    info['Fan Mode 0'] = list(conf[1].split())
-                if line.startswith('set config(1)'):
-                    split_line = line.split('{')
-                    conf = split_line[2].split('}')
-                    info['Fan Mode 1'] = list(conf[1].split())
-                if line.startswith('set config(2)'):
-                    split_line = line.split('{')
-                    conf = split_line[2].split('}')
-                    info['Fan Mode 2'] = list(conf[1].split())
-                if line.startswith('set config(3)'):
-                    split_line = line.split('{')
-                    conf = split_line[2].split('}')
-                    info['Fan Mode 3'] = list(conf[1].split())
-                if line.startswith('set status(leftspeed)'):
-                    conf = line.split(
-                        "set status(leftspeed)")[1].strip().strip('"')
-                    info['Left Speed'] = list(conf.split())
-                if line.startswith('set status(rightspeed)'):
-                    conf = line.split(
-                        "set status(rightspeed)")[1].strip().strip('"')
-                    info['Right Speed'] = list(conf.split())
-            i8k_config.close()
+            if i8k_config:
+                for line in i8k_config:
+                    if line.startswith('set config(t_high)'):
+                        conf = line.split('set config(t_high)')[1].strip()
+                        info['High CPU Temp'] = conf
+                    if line.startswith('set config(0)'):
+                        split_line = line.split('{')
+                        conf = split_line[2].split('}')
+                        info['Fan Mode 0'] = list(conf[1].split())
+                    if line.startswith('set config(1)'):
+                        split_line = line.split('{')
+                        conf = split_line[2].split('}')
+                        info['Fan Mode 1'] = list(conf[1].split())
+                    if line.startswith('set config(2)'):
+                        split_line = line.split('{')
+                        conf = split_line[2].split('}')
+                        info['Fan Mode 2'] = list(conf[1].split())
+                    if line.startswith('set config(3)'):
+                        split_line = line.split('{')
+                        conf = split_line[2].split('}')
+                        info['Fan Mode 3'] = list(conf[1].split())
+                    if line.startswith('set status(leftspeed)'):
+                        conf = line.split(
+                            "set status(leftspeed)")[1].strip().strip('"')
+                        info['Left Speed'] = list(conf.split())
+                    if line.startswith('set status(rightspeed)'):
+                        conf = line.split(
+                            "set status(rightspeed)")[1].strip().strip('"')
+                        info['Right Speed'] = list(conf.split())
+                i8k_config.close()
         return info
 
     def get_smbios_information(self):
@@ -569,6 +601,8 @@ class I8kGui(QMainWindow):
         self.smbios_button.clicked.connect(self.get_smbios_information)
 
         f_layout = QFormLayout()
+        f_layout.addRow("CPU Model", self.cpu_model)
+        f_layout.addRow("CPU TDP", self.get_cpu_tdp())
         f_layout.addRow("i8k Format Version", self.i8k_format_version)
         f_layout.addRow("BIOS Version", self.bios_version)
         f_layout.addRow("Service Tag", self.service_tag)
@@ -651,7 +685,9 @@ class I8kGui(QMainWindow):
             # setup display
             self.tray_menu.addAction(self.cpu_mhz)
             self.tray_menu.addAction(self.cpu_governor)
+            self.connect_cpupower()
             self.tray_menu.addAction(self.cpu_temp)
+            self.tray_menu.addMenu(self.cpu_details)
             self.tray_menu.addAction(self.left_fan_rpm)
             self.tray_menu.addAction(self.right_fan_rpm)
             self.tray_menu.addAction(self.left_fan_status)
@@ -679,6 +715,23 @@ class I8kGui(QMainWindow):
             QMessageBox.critical(
                 None, "i8kgui", "Unable to locate system tray on this system.")
             self.close_app()
+
+    def connect_cpupower(self):
+        # connect to cpupower-gui if found
+        cpupower_file = Path(str(shutil.which("cpupower-gui")))
+        if cpupower_file.is_file():
+            self.cpu_governor.triggered.connect(self.show_cpupower)
+
+    def show_cpupower(self):
+        self.cpupower = QProcess()
+        self.cpupower.start("cpupower-gui")
+        self.cpupower.waitForFinished()
+        result = self.cpupower.readLine()
+        output = bytes(result).decode("utf8")
+        if error := output.strip('\n'):
+            print(f"Error: failed to load cpupower-gui {error}")
+        self.cpupower.close()
+        self.cpupower = None
 
     def thermal_mode_selection(self, checked):
         if self.bios_thermal_control_on:
@@ -722,14 +775,12 @@ class I8kGui(QMainWindow):
     def message_clicked(self):
         self.close_app()
 
-    def read_proc(self):
-        # read i8k values from /proc then update the system tray
-        # and send a fake click to initiate live updating while
-        # the system tray is in active use.
-        if self.critical_error:
-            return
+    def read_i8kmon_info(self):
+        i8k_proc = None
         try:
-            i8k_proc = open('/proc/i8k', 'r')
+            i8kmon_proc = Path("/proc/i8k").resolve()
+            if i8kmon_proc.is_file():
+                i8k_proc = open(i8kmon_proc, 'r')
         except IOError as e:
             self.critical_error = True
             self.tray.showMessage("i8kgui",
@@ -738,96 +789,129 @@ class I8kGui(QMainWindow):
                                   icon=QSystemTrayIcon.Critical,
                                   msecs=10000)
         else:
-            line = i8k_proc.readline()  # output is only a single line.
-            i8k_proc.close()
-            split_line = line.split(' ')
-            self.cpu_temp.setText(f"CPU Temp:                "
-                                  f"{split_line[3].strip()}"
-                                  f"{self.degree_sign}C")
-            self.left_fan_rpm.setText(
-                f"Left Fan RPM:          {split_line[6].strip()}")
-            self.right_fan_rpm.setText(
-                f"Right Fan RPM:       {split_line[7].strip()}")
-            self.left_fan_status.setText(
-                f"Left Fan Mode:       {split_line[4].strip()}")
-            self.right_fan_status.setText(
-                f"Right Fan Mode:    {split_line[5].strip()}")
-            if self.left_fan_mode != int(
-                    split_line[4].strip()) or self.right_fan_mode != int(
-                        split_line[5].strip()):
-                self.left_fan_mode = int(split_line[4].strip())
-                self.right_fan_mode = int(split_line[5].strip())
-                self.update_i8k_thermal()
-            self.update_i8k_ac_power()
+            if i8k_proc:
+                line = i8k_proc.readline()  # output is only a single line.
+                i8k_proc.close()
+                split_line = line.split(' ')
+                self.cpu_temp.setText(f"CPU Temp:                "
+                                      f"{split_line[3].strip()}"
+                                      f"{self.degree_sign}C")
+                self.left_fan_rpm.setText(
+                    f"Left Fan RPM:          {split_line[6].strip()}")
+                self.right_fan_rpm.setText(
+                    f"Right Fan RPM:       {split_line[7].strip()}")
+                self.left_fan_status.setText(
+                    f"Left Fan Mode:       {split_line[4].strip()}")
+                self.right_fan_status.setText(
+                    f"Right Fan Mode:    {split_line[5].strip()}")
+                if self.left_fan_mode != int(
+                        split_line[4].strip()) or self.right_fan_mode != int(
+                            split_line[5].strip()):
+                    self.left_fan_mode = int(split_line[4].strip())
+                    self.right_fan_mode = int(split_line[5].strip())
+                    self.update_i8k_thermal()
+                self.update_i8k_ac_power()
 
-            self.i8k_format_version.setText(split_line[0].strip())
-            self.bios_version.setText(split_line[1].strip())
-            self.service_tag.setText(split_line[2].strip())
-            self.power_status.setText(split_line[8].strip())
-            self.button_status.setText(split_line[9].strip())
-            # gather current CPU MHz.
-            try:
-                cpu_proc = open('/proc/cpuinfo', 'r')
-            except IOError as e:
-                self.critical_error = True
-                self.tray.showMessage(
-                    "i8kgui",
-                    f"Error cannot find /proc/cpuinfo.\n\n{e}",
-                    icon=QSystemTrayIcon.Critical,
-                    msecs=10000)
-            else:
-                all_mhz = []
-                for line in cpu_proc:
-                    if 'MHz' in line:
-                        mhz = int(
-                            line.split(':')[1].strip('\n').split('.')
-                            [0].strip())
+                self.i8k_format_version.setText(split_line[0].strip())
+                self.bios_version.setText(split_line[1].strip())
+                self.service_tag.setText(split_line[2].strip())
+                self.power_status.setText(split_line[8].strip())
+                self.button_status.setText(split_line[9].strip())
+
+    def read_cpu_info(self):
+        # gather current CPU MHz.
+        try:
+            cpu_procs = []
+            all_mhz = []
+            for cpu in self.cpu_curr_freqs:
+                cpu_proc = Path(cpu).resolve()
+                if cpu_proc.is_file():
+                    proc = open(cpu_proc, 'r')
+                    cpu_procs.append(proc)
+                    for line in proc:
+                        mhz = int(line.strip('\n')) // 1000
                         all_mhz.append(mhz)
-                if self.use_cpu_ave_freq:
-                    total_mhz = sum(all_mhz)
-                    mhz = total_mhz // len(all_mhz)
-                else:
-                    all_mhz.sort()
-                    mhz = all_mhz[-1]
-                self.cpu_mhz.setText(
-                    f"CPU Freq:                  {mhz} MHz")
-                cpu_proc.close()
-            # gather current CPU governor
-            try:
-                gov_sys = open(
-                    '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor',
-                    'r')
-            except IOError as e:
-                self.critical_error = True
-                self.tray.showMessage(
-                    "i8kgui",
-                    f"Error cannot find "
-                    f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
-                    f"\n\n{e}",
-                    icon=QSystemTrayIcon.Critical,
-                    msecs=10000)
+        except IOError as e:
+            self.critical_error = True
+            self.tray.showMessage(
+                "i8kgui",
+                f"Error cannot find /proc/cpuinfo.\n\n{e}",
+                icon=QSystemTrayIcon.Critical,
+                msecs=10000)
+        else:
+            if self.use_cpu_ave_freq:
+                total_mhz = sum(all_mhz)
+                mhz = total_mhz // len(all_mhz)
             else:
+                all_mhz.sort()
+                mhz = all_mhz[-1]
+            self.cpu_mhz.setText(
+                f"CPU Freq:                  {mhz} MHz")
+            for i, c in enumerate(self.cpu_freq_list):
+                c.setText(f"CPU {i}:\t   {all_mhz[i]} MHz\t     "
+                          f"{psutil.sensors_temperatures()['coretemp'][i+1][1]}"
+                          f"{self.degree_sign}C")
+            for cpu in cpu_procs:
+                cpu.close()
+
+    def read_cpu_gov_info(self):
+        # gather current CPU governor
+        gov_sys = None
+        try:
+            scaling_sysfs = Path(
+                "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+            ).resolve()
+            if scaling_sysfs.is_file:
+                gov_sys = open(scaling_sysfs, 'r')
+        except IOError as e:
+            self.critical_error = True
+            self.tray.showMessage(
+                "i8kgui",
+                f"Error cannot find "
+                f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
+                f"\n\n{e}",
+                icon=QSystemTrayIcon.Critical,
+                msecs=10000)
+        else:
+            if gov_sys:
                 gov = gov_sys.readline().strip()
                 gov_sys.close()
                 self.cpu_governor.setText(
                     f"CPU Governor:        {gov.capitalize()}")
-            # gather power supply status
-            try:
-                pwr_sys = open('/sys/class/power_supply/AC/online', 'r')
-            except IOError as e:
-                self.critical_error = True
-                self.tray.showMessage(
-                    "i8kgui",
-                    f"Error cannot find /sys/class/power_supply/AC/online."
-                    f"\n\n{e}",
-                    icon=QSystemTrayIcon.Critical,
-                    msecs=10000)
-            else:
+
+    def read_power_supply_status(self):
+        # gather power supply status
+        pwr_sys = None
+        try:
+            power_sysfs = Path("/sys/class/power_supply/AC/online").resolve()
+            if power_sysfs.is_file():
+                pwr_sys = open(power_sysfs, 'r')
+        except IOError as e:
+            self.critical_error = True
+            self.tray.showMessage(
+                "i8kgui",
+                f"Error cannot find /sys/class/power_supply/AC/online."
+                f"\n\n{e}",
+                icon=QSystemTrayIcon.Critical,
+                msecs=10000)
+        else:
+            if pwr_sys:
                 pwr_ac = pwr_sys.readline().strip()
                 pwr_sys.close()
                 self.ac_power_supply_on = int(pwr_ac) == 1
-            # send fake single-click event as workaround
-            self.tray.activated.emit(QSystemTrayIcon.Trigger)
+
+    def read_proc(self):
+        # read i8k, CPU and power values then update the system tray
+        # and send a fake click to initiate live updating while
+        # the system tray is in active use.
+        if self.critical_error:
+            return
+        self.read_i8kmon_info()
+        self.read_cpu_info()
+        self.read_cpu_gov_info()
+        self.read_power_supply_status()
+        # send fake single-click event as workaround
+        self.tray.activated.emit(QSystemTrayIcon.Trigger)
 
     def update_i8k_ac_power(self):
         # update i8k thermal menu fan mode based on A/C power supply status
