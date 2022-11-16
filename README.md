@@ -20,6 +20,7 @@ i8kgui uses i8kutils to gather information such as CPU temperature and fan speed
 
 * Displays CPU temperature, fan speeds and fan modes from i8kutils
 * Displays the current CPU frequency
+* Displays individual CPU core frequencies and temperatures
 * Shows the currently active i8kutils configuration being used
 * Supports (SM)BIOS thermal management modes
 * Displays i8k module information
@@ -98,7 +99,7 @@ sudo python3 setup.py install
 
 Please ensure that you have configured i8kutils before starting!
 
-Once i8kutils is correctly configured, please run the following to start up the services if they are not already
+Once i8kutils is correctly configured using the `/etc/i8kmon.conf` file, please run the following to start up the services if they are not already
 running.
 
 ```
@@ -113,6 +114,14 @@ enable this feature typically four fan modes will be available. Please note that
 will reduce performance due to CPU power capping. Changing (SM)BIOS thermal modes may require entering a user password.
 
 Disabling (SM)BIOS thermal management will re-enable i8kutils's management and configuration.
+
+## Peronsal configuration
+
+The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf` configuration file, used on a Dell XPS 7590 (Intel i7). 
+
+[Undervolt](https://github.com/georgewhewell/undervolt) is installed using the following settings to avoid thermal throttling `undervolt -v --gpu -0 --core -120 --cache -120 --uncore -120 --analogio 0 --temp 100`.
+
+Disclaimer: Please note the author takes *no* responsibility for any damage that occurs from using this software and/or configurations.
 
 ## Issues and requests
 
