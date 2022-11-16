@@ -8,10 +8,11 @@ A simple system tray GUI to display useful information from [i8kutils](https://g
 as a quick hack for my own needs.
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/7116312/154058543-3d65039e-77d3-4a39-b106-ab3de15925ef.png" alt="i8k" width="150" />
-  <img src="https://user-images.githubusercontent.com/7116312/154058627-90e3abe7-258f-4c23-bf88-85d1ae04645f.png" alt="bios"width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/202189994-63857806-d2bc-4ba5-81eb-74f6f9fc5e49.png" alt="i8k" width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/202190335-30de2c06-a3f2-4912-a9e7-3f28e4585633.png" alt="bios"width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/202192230-873dcc5a-91e3-401b-9c91-6c074e5cba04.png" alt="cores"width="150" />
   <img src="https://user-images.githubusercontent.com/7116312/154058677-ee7d8858-6cfa-48a8-8dff-f813439bec64.png" alt="settings" width="250" />
-  <img src="https://user-images.githubusercontent.com/7116312/153890711-452b82ff-dc22-437e-b541-a651064d9b23.png" alt="info" width="250" />
+  <img src="https://user-images.githubusercontent.com/7116312/202192004-1bc59976-edd5-4d81-a46c-b9450d677ca8.png" alt="info" width="250" />
 </p>
 
 i8kgui uses i8kutils to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
