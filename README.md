@@ -8,10 +8,11 @@ A simple system tray GUI to display useful information from [i8kutils](https://g
 as a quick hack for my own needs.
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/7116312/154058543-3d65039e-77d3-4a39-b106-ab3de15925ef.png" alt="i8k" width="150" />
-  <img src="https://user-images.githubusercontent.com/7116312/154058627-90e3abe7-258f-4c23-bf88-85d1ae04645f.png" alt="bios"width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/202189994-63857806-d2bc-4ba5-81eb-74f6f9fc5e49.png" alt="i8k" width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/202190335-30de2c06-a3f2-4912-a9e7-3f28e4585633.png" alt="bios"width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/202192230-873dcc5a-91e3-401b-9c91-6c074e5cba04.png" alt="cores"width="150" />
   <img src="https://user-images.githubusercontent.com/7116312/154058677-ee7d8858-6cfa-48a8-8dff-f813439bec64.png" alt="settings" width="250" />
-  <img src="https://user-images.githubusercontent.com/7116312/153890711-452b82ff-dc22-437e-b541-a651064d9b23.png" alt="info" width="250" />
+  <img src="https://user-images.githubusercontent.com/7116312/202192004-1bc59976-edd5-4d81-a46c-b9450d677ca8.png" alt="info" width="250" />
 </p>
 
 i8kgui uses i8kutils to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
@@ -20,6 +21,7 @@ i8kgui uses i8kutils to gather information such as CPU temperature and fan speed
 
 * Displays CPU temperature, fan speeds and fan modes from i8kutils
 * Displays the current CPU frequency
+* Displays individual CPU core frequencies and temperatures
 * Shows the currently active i8kutils configuration being used
 * Supports (SM)BIOS thermal management modes
 * Displays i8k module information
@@ -98,7 +100,7 @@ sudo python3 setup.py install
 
 Please ensure that you have configured i8kutils before starting!
 
-Once i8kutils is correctly configured, please run the following to start up the services if they are not already
+Once i8kutils is correctly configured using the `/etc/i8kmon.conf` file, please run the following to start up the services if they are not already
 running.
 
 ```
@@ -113,6 +115,19 @@ enable this feature typically four fan modes will be available. Please note that
 will reduce performance due to CPU power capping. Changing (SM)BIOS thermal modes may require entering a user password.
 
 Disabling (SM)BIOS thermal management will re-enable i8kutils's management and configuration.
+
+## Personal configuration
+
+The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf` configuration file, used on a Dell XPS 7590 (Intel i7). 
+
+[Undervolt](https://github.com/georgewhewell/undervolt) is installed using the following settings to avoid thermal throttling: 
+```
+undervolt -v --gpu -0 --core -120 --cache -120 --uncore -120 --analogio 0 --temp 100
+```
+
+## Disclaimer
+
+Please note the author takes *no responsibility for any damage* that occurs from using this software and/or configurations.
 
 ## Issues and requests
 
