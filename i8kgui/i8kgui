@@ -962,6 +962,15 @@ class I8kGui(QMainWindow):
                 self.service_tag.setText(split_line[2].strip())
                 self.power_status.setText(split_line[8].strip())
                 self.button_status.setText(split_line[9].strip())
+            elif self.alternative_cpu_temp:
+                self.left_fan_rpm.setText(
+                    f"Left Fan RPM:          {psutil.sensors_fans()['dell_smm'][0][1]}")
+                self.right_fan_rpm.setText(
+                    f"Right Fan RPM:       {psutil.sensors_fans()['dell_smm'][1][1]}")
+                self.left_fan_status.setText(
+                    "Left Fan Mode:       N/A")
+                self.right_fan_status.setText(
+                    "Right Fan Mode:    N/A")
 
     def read_cpu_info(self):
         """read_cpu_info."""
