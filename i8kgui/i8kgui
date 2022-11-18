@@ -324,6 +324,20 @@ class I8kGui(QMainWindow):
         # combination is a fail.
         return len(active_services) == 2
 
+    def check_prerequisites(self):
+        """check_thermal_prerequisites. Check for i8k and SMBIOS."""
+        # check for i8k
+        i8kmon_proc = Path("/proc/i8k").resolve()
+        # check for smbios-thermal-ctl
+        smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
+        # if both exist return True
+        if i8kmon_proc.is_file() and smbois_ctl.is_file():
+            return True
+        # else disable menu and return False
+        self.thermal_control_menu.setTitle("Thermal Control N/A")
+        self.thermal_menu_group.setDisabled(True)
+        return False
+
     def bios_thermal_control(self, op=None):
         """bios_thermal_control.
 
@@ -491,6 +505,9 @@ class I8kGui(QMainWindow):
 
     def build_thermal_menu(self):
         """build_thermal_menu."""
+        if not self.check_prerequisites():
+            return
+
         if self.thermal_menu_group.actions():
             return
 
