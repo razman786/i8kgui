@@ -936,10 +936,10 @@ class I8kGui(QMainWindow):
         # the system tray is in active use.
         if self.critical_error:
             return
+        self.read_power_supply_status()
         self.read_i8kmon_info()
         self.read_cpu_info()
         self.read_cpu_gov_info()
-        self.read_power_supply_status()
         # send fake single-click event as workaround
         if self.tray:
             self.tray.activated.emit(QSystemTrayIcon.Trigger)
