@@ -69,9 +69,12 @@ class I8kGui(QMainWindow):
         self.service_tag = QLabel("N/A")
         self.power_status = QLabel("N/A")
         self.button_status = QLabel("N/A")
-        self.fan_mode_menu_item = QAction("", checkable=False)
-        self.left_fan_thermal_menu_item = QAction("", checkable=False)
-        self.right_fan_thermal_menu_item = QAction("", checkable=False)
+        self.fan_mode_menu_item = QAction("")
+        self.fan_mode_menu_item.setCheckable(False)
+        self.left_fan_thermal_menu_item = QAction("")
+        self.left_fan_thermal_menu_item.setCheckable(False)
+        self.right_fan_thermal_menu_item = QAction("")
+        self.right_fan_thermal_menu_item.setCheckable(False)
         self.left_fan_mode = 0
         self.right_fan_mode = 0
         self.i8k_info = {}
@@ -415,7 +418,8 @@ class I8kGui(QMainWindow):
         if self.bios_thermal_control_on:
             if self.supported_thermal_modes:
                 for item in self.supported_thermal_modes:
-                    thermal_menu_item = QAction(item, checkable=True)
+                    thermal_menu_item = QAction(item)
+                    thermal_menu_item.setCheckable(True)
                     self.thermal_control_menu.addAction(thermal_menu_item)
                     self.thermal_menu_group.addAction(thermal_menu_item)
                 self.thermal_menu_group.setEnabled(True)
@@ -454,7 +458,8 @@ class I8kGui(QMainWindow):
                         self.thermal_menu_group.addAction(self.right_fan_thermal_menu_item)
                     else:
                         title = f"{key}: {value}{self.degree_sign}C"
-                        thermal_menu_item = QAction(title, checkable=False)
+                        thermal_menu_item = QAction(title)
+                        thermal_menu_item.setCheckable(False)
                         self.thermal_control_menu.addAction(thermal_menu_item)
                         self.thermal_menu_group.addAction(thermal_menu_item)
             self.thermal_menu_group.setEnabled(True)
@@ -465,7 +470,8 @@ class I8kGui(QMainWindow):
         for i in range(self.cpu_num):
             self.cpu_curr_freqs.append(
                 f"/sys/devices/system/cpu/cpu{i}/cpufreq/scaling_cur_freq")
-            c_action = QAction(f"CPU {i}", checkable=False)
+            c_action = QAction(f"CPU {i}")
+            c_action.setCheckable(False)
             self.cpu_details.addAction(c_action)
             self.cpu_freq_list.append(c_action)
 
