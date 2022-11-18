@@ -53,6 +53,7 @@ class I8kGui(QMainWindow):
         self.always_on = False
         self.bios_thermal_control_on = False
         self.tray_menu = QMenu()
+        self.alternative_cpu_temp = False
         self.thermal_menu_group = QActionGroup(self.tray_menu)
         self.thermal_control_menu = QMenu("I8K Thermal Management")
         self.monitor_interval = 1000
@@ -336,6 +337,7 @@ class I8kGui(QMainWindow):
         # else disable menu and return False
         self.thermal_control_menu.setTitle("Thermal Control N/A")
         self.thermal_menu_group.setDisabled(True)
+        self.alternative_cpu_temp = True
         return False
 
     def bios_thermal_control(self, op=None):
@@ -998,6 +1000,10 @@ class I8kGui(QMainWindow):
                           f"{self.degree_sign}C")
             for cpu in cpu_procs:
                 cpu.close()
+            if self.alternative_cpu_temp:
+                self.cpu_temp.setText(f"CPU Temp:                "
+                                      f"{psutil.sensors_temperatures()['coretemp'][0][1]}"
+                                      f"{self.degree_sign}C")
 
     def read_cpu_gov_info(self):
         """read_cpu_gov_info."""
