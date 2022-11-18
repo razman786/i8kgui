@@ -313,15 +313,19 @@ class I8kGui(QMainWindow):
                          [str(thermal_file.resolve()), '--disable'])
 
     def handle_thermal_stderr(self):
-        data = self.p.readAllStandardError()
-        stderr = bytes(data).decode("utf8")
-        # check if pkexec passwd input cancelled
-        if 'Request dismissed' in stderr:
-            self.p.finished.emit(1, QProcess.CrashExit)
-        else:
-            print(f"Error: handle_thermal_stderr {stderr}")
+        if self.p:
+            data = self.p.readAllStandardError()
+            stderr = bytes(data).decode("utf8")
+            # check if pkexec passwd input cancelled
+            if 'Request dismissed' in stderr:
+                self.p.finished.emit(1, QProcess.CrashExit)
+            else:
+                print(f"Error: handle_thermal_stderr {stderr}")
 
     def handle_thermal_stdout(self):
+        if not self.p:
+            return
+
         data = self.p.readAllStandardOutput()
         stdout = bytes(data).decode("utf8")
         if stdout.startswith('Supported Thermal Modes'):
@@ -344,9 +348,10 @@ class I8kGui(QMainWindow):
 
     def kill_process(self):
         try:
-            self.p.terminate()
-            self.p.waitForFinished(1000)
-            self.p.kill()
+            if self.p:
+                self.p.terminate()
+                self.p.waitForFinished(1000)
+                self.p.kill()
         except Exception:
             pass
         self.p = None
@@ -536,10 +541,13 @@ class I8kGui(QMainWindow):
         return info
 
     def get_smbios_information(self):
-        if self.p is None:
-            # find smbios script
-            smbios_file = Path(str(shutil.which("smbios-sys-info")))
-            if not smbios_file.is_file():
+        if self.p is not None:
+            return
+
+        # find smbios script
+        smbios_file = Path(str(shutil.which("smbios-sys-info")))
+        if not smbios_file.is_file():
+            if self.tray:
                 self.tray.showMessage(
                     "i8kgui",
                     "Error please install python3-libsmbios, "
@@ -559,17 +567,19 @@ class I8kGui(QMainWindow):
             self.p.start("pkexec", [str(smbios_file.resolve())])
 
     def handle_smbios_stderr(self):
-        data = self.p.readAllStandardError()
-        stderr = bytes(data).decode("utf8")
-        if 'Request dismissed' in stderr:
-            self.p.finished.emit(1, QProcess.CrashExit)
-        else:
-            print(f"Error: handle_smbios_stderr {stderr}")
+        if self.p:
+            data = self.p.readAllStandardError()
+            stderr = bytes(data).decode("utf8")
+            if 'Request dismissed' in stderr:
+                self.p.finished.emit(1, QProcess.CrashExit)
+            else:
+                print(f"Error: handle_smbios_stderr {stderr}")
 
     def handle_smbios_stdout(self):
-        data = self.p.readAllStandardOutput()
-        stdout = bytes(data).decode("utf8")
-        self.smbios_message(stdout)
+        if self.p:
+            data = self.p.readAllStandardOutput()
+            stdout = bytes(data).decode("utf8")
+            self.smbios_message(stdout)
 
     def handle_process_state(self, state):
         states = {
