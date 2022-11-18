@@ -35,7 +35,6 @@ warnings.filterwarnings("ignore")
 class I8kGui(QMainWindow):
     """I8kGui."""
 
-
     def __init__(self):
         """__init__."""
         super(I8kGui, self).__init__()
