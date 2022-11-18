@@ -20,7 +20,7 @@ import shutil
 import warnings
 
 from PySide6 import QtCore
-from PySide6.QtCore import QProcess, QSettings, QSize, Slot
+from PySide6.QtCore import QProcess, QSettings, QSize, Slot, QTimer
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QIcon, QIntValidator,
                            QPalette, QScreen, Qt)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFormLayout,
@@ -76,7 +76,7 @@ class I8kGui(QMainWindow):
         self.right_fan_mode = 0
         self.i8k_info = {}
         self.load_settings()
-        self.monitorTimer = QtCore.QTimer(self)
+        self.monitorTimer = QTimer(self)
         self.monitorTimer.timeout.connect(self.refresh_monitor)
         self.monitorTimer.setInterval(self.monitor_interval)
         self.create_settings_dialog()
