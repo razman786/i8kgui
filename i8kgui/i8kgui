@@ -116,7 +116,7 @@ class I8kGui(QMainWindow):
 
     def load_settings(self):
         # load continuous data collection setting
-        always_on = self.settings.value('always_on')
+        always_on = str(self.settings.value('always_on'))
         if always_on and always_on.lower() == 'false':
             self.always_on = False
             self.always_on_checkbox.setCheckState(Qt.Unchecked)
@@ -124,9 +124,10 @@ class I8kGui(QMainWindow):
             self.always_on = True
             self.always_on_checkbox.setCheckState(Qt.Checked)
         # load monitoring interval setting
-        self.monitor_interval = int(self.settings.value('interval', 1000))
+        self.monitor_interval = int(str(self.settings.value('interval', 1000)))
+
         # load average CPU freq. setting
-        use_cpu_ave_freq = self.settings.value('use_cpu_ave_freq')
+        use_cpu_ave_freq = str(self.settings.value('use_cpu_ave_freq'))
         if use_cpu_ave_freq and use_cpu_ave_freq.lower() == 'true':
             self.use_cpu_ave_freq = True
             self.cpu_ave_freq_checkbox.setCheckState(Qt.Checked)
@@ -143,8 +144,9 @@ class I8kGui(QMainWindow):
             }
             self.smbios_button.setDisabled(True)
         # load bios thermal mode setting
-        bios_thermal_control_on = self.settings.value(
-            'bios_thermal_control_on')
+        bios_thermal_control_on = str(self.settings.value(
+            'bios_thermal_control_on'))
+
         # load current mode
         self.current_thermal_mode = self.settings.value('current_thermal_mode')
         # load supported thermal modes setting
