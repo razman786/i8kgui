@@ -502,11 +502,12 @@ class I8kGui(QMainWindow):
                 i8k_config = open(i8kmon_conf, 'r')
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage("i8kgui",
-                                  f"Error cannot find /etc/i8kmon.conf. "
-                                  f"Please check your config file \n\n{e}",
-                                  icon=QSystemTrayIcon.Critical,
-                                  msecs=10000)
+            if self.tray:
+                self.tray.showMessage("i8kgui",
+                                      f"Error cannot find /etc/i8kmon.conf. "
+                                      f"Please check your config file \n\n{e}",
+                                      icon=QSystemTrayIcon.Critical,
+                                      msecs=10000)
         else:
             if i8k_config:
                 for line in i8k_config:
@@ -757,12 +758,13 @@ class I8kGui(QMainWindow):
                 # find libsmbios script
                 thermal_file = Path(str(shutil.which("smbios-thermal-ctl")))
                 if not thermal_file.is_file():
-                    self.tray.showMessage(
-                        "i8kgui",
-                        "Error please install python3-libsmbios, "
-                        "smbios-thermal-ctl not found.",
-                        icon=QSystemTrayIcon.Critical,
-                        msecs=10000)
+                    if self.tray:
+                        self.tray.showMessage(
+                            "i8kgui",
+                            "Error please install python3-libsmbios, "
+                            "smbios-thermal-ctl not found.",
+                            icon=QSystemTrayIcon.Critical,
+                            msecs=10000)
                     return
                 t_args = "--set-thermal-mode="
                 if checked.text() == 'Quiet':
@@ -801,11 +803,12 @@ class I8kGui(QMainWindow):
                 i8k_proc = open(i8kmon_proc, 'r')
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage("i8kgui",
-                                  f"Error cannot find i8k module. "
-                                  f"Please install/start i8kutils.\n\n{e}",
-                                  icon=QSystemTrayIcon.Critical,
-                                  msecs=10000)
+            if self.tray:
+                self.tray.showMessage("i8kgui",
+                                      f"Error cannot find i8k module. "
+                                      f"Please install/start i8kutils.\n\n{e}",
+                                      icon=QSystemTrayIcon.Critical,
+                                      msecs=10000)
         else:
             if i8k_proc:
                 line = i8k_proc.readline()  # output is only a single line.
@@ -851,11 +854,12 @@ class I8kGui(QMainWindow):
                         all_mhz.append(mhz)
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage(
-                "i8kgui",
-                f"Error cannot find /proc/cpuinfo.\n\n{e}",
-                icon=QSystemTrayIcon.Critical,
-                msecs=10000)
+            if self.tray:
+                self.tray.showMessage(
+                    "i8kgui",
+                    f"Error cannot find /proc/cpuinfo.\n\n{e}",
+                    icon=QSystemTrayIcon.Critical,
+                    msecs=10000)
         else:
             if self.use_cpu_ave_freq:
                 total_mhz = sum(all_mhz)
@@ -883,13 +887,14 @@ class I8kGui(QMainWindow):
                 gov_sys = open(scaling_sysfs, 'r')
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage(
-                "i8kgui",
-                f"Error cannot find "
-                f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
-                f"\n\n{e}",
-                icon=QSystemTrayIcon.Critical,
-                msecs=10000)
+            if self.tray:
+                self.tray.showMessage(
+                    "i8kgui",
+                    f"Error cannot find "
+                    f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
+                    f"\n\n{e}",
+                    icon=QSystemTrayIcon.Critical,
+                    msecs=10000)
         else:
             if gov_sys:
                 gov = gov_sys.readline().strip()
@@ -906,12 +911,13 @@ class I8kGui(QMainWindow):
                 pwr_sys = open(power_sysfs, 'r')
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage(
-                "i8kgui",
-                f"Error cannot find /sys/class/power_supply/AC/online."
-                f"\n\n{e}",
-                icon=QSystemTrayIcon.Critical,
-                msecs=10000)
+            if self.tray:
+                self.tray.showMessage(
+                    "i8kgui",
+                    f"Error cannot find /sys/class/power_supply/AC/online."
+                    f"\n\n{e}",
+                    icon=QSystemTrayIcon.Critical,
+                    msecs=10000)
         else:
             if pwr_sys:
                 pwr_ac = pwr_sys.readline().strip()
@@ -929,7 +935,8 @@ class I8kGui(QMainWindow):
         self.read_cpu_gov_info()
         self.read_power_supply_status()
         # send fake single-click event as workaround
-        self.tray.activated.emit(QSystemTrayIcon.Trigger)
+        if self.tray:
+            self.tray.activated.emit(QSystemTrayIcon.Trigger)
 
     def update_i8k_ac_power(self):
         # update i8k thermal menu fan mode based on A/C power supply status
