@@ -298,9 +298,8 @@ class I8kGui(QMainWindow):
         """check_thermal_control."""
         if self.p is not None:
             return
-        
+
         active_services = []
-        
         # check service files are available
         dell_service_file = Path(
             '/etc/systemd/system/dell-bios-fan-control.service')
@@ -494,12 +493,15 @@ class I8kGui(QMainWindow):
     def update_thermal_modes(self):
         """update_thermal_modes."""
         if self.supported_thermal_modes_data:
-            self.supported_thermal_modes = self.sanitise_thermal_modes(self.supported_thermal_modes_data)
+            self.supported_thermal_modes = self.sanitise_thermal_modes(
+                self.supported_thermal_modes_data)
             self.supported_thermal_modes_data = []
 
         if self.current_thermal_mode_data:
-            self.current_thermal_mode_data = self.sanitise_thermal_modes(self.current_thermal_mode_data)
-            self.current_thermal_mode = self.current_thermal_mode_data[0].title().replace("-", " ")
+            self.current_thermal_mode_data = self.sanitise_thermal_modes(
+                self.current_thermal_mode_data)
+            self.current_thermal_mode = self.current_thermal_mode_data[
+                0].title().replace("-", " ")
             self.current_thermal_mode_data = []
         # debug
         # print(f"disable supported modes: {self.supported_thermal_modes}")
