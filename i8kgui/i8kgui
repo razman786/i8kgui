@@ -128,6 +128,23 @@ class I8kGui(QMainWindow):
             # disable bios thermal control (i.e. default is i8kmon)
             self.bios_thermal_control(op=cmd)
 
+    def sanitise_thermal_modes(self, modes):
+        if "Current Thermal Modes: " in modes:
+            modes.remove("Current Thermal Modes: ")
+        if "Current Thermal Modes:" in modes:
+            modes.remove("Current Thermal Modes:")
+        if "Supported Thermal Modes: " in modes:
+            modes.remove("Supported Thermal Modes: ")
+        if "Supported Thermal Modes:" in modes:
+            modes.remove("Supported Thermal Modes:")
+        if "" in modes:
+            modes.remove("")
+        modes = [i.strip() for i in modes]
+        # modes = [*set(modes)]
+        s_modes = []
+        [s_modes.append(x) for x in modes if x not in s_modes]
+        return s_modes
+
     def load_settings(self):
         """load_settings."""
         # load continuous data collection setting
@@ -397,18 +414,20 @@ class I8kGui(QMainWindow):
 
         data = self.p.readAllStandardOutput()
         stdout = bytes(data).decode("utf8")
+
         # get supported BIOS thermal modes
         if stdout.startswith('Supported Thermal Modes'):
             split_stdout = stdout.split('\n')
+            split_stdout = self.sanitise_thermal_modes(split_stdout)
             for item in split_stdout:
-                self.supported_thermal_modes_data.append(item.strip())
+                self.supported_thermal_modes_data.append(item)
         # get current thermal mode
         elif stdout.startswith('Current Thermal Modes'):
             split_stdout = stdout.split('\n')
+            split_stdout = self.sanitise_thermal_modes(split_stdout)
             for item in split_stdout:
-                self.current_thermal_mode_data.append(item.strip())
-            self.current_thermal_mode_data.remove("Current Thermal Modes:")
-        # get return from sucessful change of mode
+                self.current_thermal_mode_data.append(item)
+        # get return from successful change of mode
         elif stdout.startswith('Helper function to Set Thermal Mode'):
             split_stdout = stdout.split(': ')
             self.current_thermal_mode = split_stdout[1].strip().title(
@@ -471,19 +490,12 @@ class I8kGui(QMainWindow):
     def update_thermal_modes(self):
         """update_thermal_modes."""
         if self.supported_thermal_modes_data:
-            if "Supported Thermal Modes:" in self.supported_thermal_modes_data:
-                self.supported_thermal_modes_data.remove(
-                    "Supported Thermal Modes:")
-            if "" in self.supported_thermal_modes_data:
-                self.supported_thermal_modes_data.remove("")
-            self.supported_thermal_modes = self.supported_thermal_modes_data
+            self.supported_thermal_modes = self.sanitise_thermal_modes(self.supported_thermal_modes_data)
             self.supported_thermal_modes_data = []
 
         if self.current_thermal_mode_data:
-            if "Current Thermal Modes:" in self.current_thermal_mode_data:
-                self.current_thermal_mode_data.remove("Current Thermal Modes:")
-            self.current_thermal_mode = self.current_thermal_mode_data[
-                0].title().replace("-", " ")
+            self.current_thermal_mode_data = self.sanitise_thermal_modes(self.current_thermal_mode_data)
+            self.current_thermal_mode = self.current_thermal_mode_data[0].title().replace("-", " ")
             self.current_thermal_mode_data = []
         # debug
         # print(f"disable supported modes: {self.supported_thermal_modes}")
