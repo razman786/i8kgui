@@ -407,6 +407,7 @@ class I8kGui(QMainWindow):
             split_stdout = stdout.split('\n')
             for item in split_stdout:
                 self.current_thermal_mode_data.append(item.strip())
+            self.current_thermal_mode_data.remove("Current Thermal Modes:")
         # get return from sucessful change of mode
         elif stdout.startswith('Helper function to Set Thermal Mode'):
             split_stdout = stdout.split(': ')
