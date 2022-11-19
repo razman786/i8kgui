@@ -129,6 +129,10 @@ class I8kGui(QMainWindow):
             self.bios_thermal_control(op=cmd)
 
     def sanitise_thermal_modes(self, modes):
+        """sanitise_thermal_modes.
+
+        :param modes:
+        """
         if "Current Thermal Modes: " in modes:
             modes.remove("Current Thermal Modes: ")
         if "Current Thermal Modes:" in modes:
