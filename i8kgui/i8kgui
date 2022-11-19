@@ -20,7 +20,7 @@ import shutil
 import warnings
 
 from PySide6 import QtCore
-from PySide6.QtCore import QProcess, QSettings, QSize, Slot
+from PySide6.QtCore import QProcess, QSettings, QSize, Slot, QTimer
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QIcon, QIntValidator,
                            QPalette, QScreen, Qt)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFormLayout,
@@ -28,12 +28,15 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFormLayout,
                                QMessageBox, QPushButton, QSystemTrayIcon)
 import cpuinfo
 import psutil
+
 warnings.filterwarnings("ignore")
 
 
 class I8kGui(QMainWindow):
+    """I8kGui."""
 
     def __init__(self):
+        """__init__."""
         super(I8kGui, self).__init__()
         self.settings = QSettings()
         self.critical_error = False
@@ -50,6 +53,7 @@ class I8kGui(QMainWindow):
         self.always_on = False
         self.bios_thermal_control_on = False
         self.tray_menu = QMenu()
+        self.alternative_cpu_temp = False
         self.thermal_menu_group = QActionGroup(self.tray_menu)
         self.thermal_control_menu = QMenu("I8K Thermal Management")
         self.monitor_interval = 1000
@@ -69,14 +73,17 @@ class I8kGui(QMainWindow):
         self.service_tag = QLabel("N/A")
         self.power_status = QLabel("N/A")
         self.button_status = QLabel("N/A")
-        self.fan_mode_menu_item = QAction("", checkable=False)
-        self.left_fan_thermal_menu_item = QAction("", checkable=False)
-        self.right_fan_thermal_menu_item = QAction("", checkable=False)
+        self.fan_mode_menu_item = QAction("")
+        self.fan_mode_menu_item.setCheckable(False)
+        self.left_fan_thermal_menu_item = QAction("")
+        self.left_fan_thermal_menu_item.setCheckable(False)
+        self.right_fan_thermal_menu_item = QAction("")
+        self.right_fan_thermal_menu_item.setCheckable(False)
         self.left_fan_mode = 0
         self.right_fan_mode = 0
         self.i8k_info = {}
         self.load_settings()
-        self.monitorTimer = QtCore.QTimer(self)
+        self.monitorTimer = QTimer(self)
         self.monitorTimer.timeout.connect(self.refresh_monitor)
         self.monitorTimer.setInterval(self.monitor_interval)
         self.create_settings_dialog()
@@ -99,37 +106,72 @@ class I8kGui(QMainWindow):
         self.load_sys_tray()
 
     def close_app(self):
+        """close_app."""
         self.save_settings()
         app.quit()
 
-    def thermal_error_dialog(self, cmd='disable',
-                             msg="Critical Service Error. "
-                             "Please enter your password."):
+    def thermal_error_dialog(
+        self,
+        cmd='disable',
+        msg="Critical Service Error. "
+            "Please click 'OK' and possibly enter your password."):
+        """thermal_error_dialog.
+
+        :param cmd:
+        :param msg:
+        """
+        # displays an error dialog when services are out of sync
         error_dialog = QMessageBox(QMessageBox.Icon.Critical, "i8kgui", msg)
         error_dialog.setText(msg)
         button = error_dialog.exec()
         if button == QMessageBox.Ok:
+            # disable bios thermal control (i.e. default is i8kmon)
             self.bios_thermal_control(op=cmd)
 
+    def sanitise_thermal_modes(self, modes):
+        """sanitise_thermal_modes.
+
+        :param modes:
+        """
+        if "Current Thermal Modes: " in modes:
+            modes.remove("Current Thermal Modes: ")
+        if "Current Thermal Modes:" in modes:
+            modes.remove("Current Thermal Modes:")
+        if "Supported Thermal Modes: " in modes:
+            modes.remove("Supported Thermal Modes: ")
+        if "Supported Thermal Modes:" in modes:
+            modes.remove("Supported Thermal Modes:")
+        if "" in modes:
+            modes.remove("")
+        modes = [i.strip() for i in modes]
+        # modes = [*set(modes)]
+        s_modes = []
+        [s_modes.append(x) for x in modes if x not in s_modes]
+        return s_modes
+
     def load_settings(self):
+        """load_settings."""
         # load continuous data collection setting
-        always_on = self.settings.value('always_on')
+        always_on = str(self.settings.value('always_on'))
         if always_on and always_on.lower() == 'false':
             self.always_on = False
             self.always_on_checkbox.setCheckState(Qt.Unchecked)
         else:
             self.always_on = True
             self.always_on_checkbox.setCheckState(Qt.Checked)
+
         # load monitoring interval setting
-        self.monitor_interval = int(self.settings.value('interval', 1000))
+        self.monitor_interval = int(str(self.settings.value('interval', 1000)))
+
         # load average CPU freq. setting
-        use_cpu_ave_freq = self.settings.value('use_cpu_ave_freq')
+        use_cpu_ave_freq = str(self.settings.value('use_cpu_ave_freq'))
         if use_cpu_ave_freq and use_cpu_ave_freq.lower() == 'true':
             self.use_cpu_ave_freq = True
             self.cpu_ave_freq_checkbox.setCheckState(Qt.Checked)
         else:
             self.use_cpu_ave_freq = False
             self.cpu_ave_freq_checkbox.setCheckState(Qt.Unchecked)
+
         # load smbios information from config
         info = list(self.settings.value('smbios', []))
         if info:
@@ -139,14 +181,18 @@ class I8kGui(QMainWindow):
                 for i in range(0, len(info))
             }
             self.smbios_button.setDisabled(True)
+
         # load bios thermal mode setting
-        bios_thermal_control_on = self.settings.value(
-            'bios_thermal_control_on')
+        bios_thermal_control_on = str(self.settings.value(
+            'bios_thermal_control_on'))
+
         # load current mode
         self.current_thermal_mode = self.settings.value('current_thermal_mode')
+
         # load supported thermal modes setting
         supported_thermal_modes = self.settings.value(
             'supported_thermal_modes')
+
         # setup bios thermal mode setting
         if bios_thermal_control_on is None:
             self.bios_thermal_control_on = False
@@ -158,8 +204,10 @@ class I8kGui(QMainWindow):
             self.supported_thermal_modes = []
         else:
             self.supported_thermal_modes = list(supported_thermal_modes)
+
         # check current status of i8kmon services.
         i8k_is_active = self.check_thermal_control()
+
         # set system to last known settings or default
         if not self.bios_thermal_control_on and not i8k_is_active:
             self.thermal_error_dialog(cmd='disable')
@@ -171,6 +219,7 @@ class I8kGui(QMainWindow):
             self.thermal_checkbox.setChecked(False)
 
     def save_settings(self):
+        """save_settings."""
         self.settings.setValue('current_thermal_mode',
                                self.current_thermal_mode)
         self.settings.setValue('supported_thermal_modes',
@@ -185,12 +234,20 @@ class I8kGui(QMainWindow):
             self.settings.setValue('smbios', list(self.smbios_info.items()))
 
     def enable_thermal_control(self, checked):
+        """enable_thermal_control.
+
+        :param checked:
+        """
         if checked == Qt.Checked:
             self.bios_thermal_control(op='enable')
         else:
             self.bios_thermal_control(op='disable')
 
     def always_collect(self, checked):
+        """always_collect.
+
+        :param checked:
+        """
         if checked == Qt.Checked:
             self.monitor_interval = int(self.interval_input.text())
             self.monitorTimer.setInterval(self.monitor_interval)
@@ -204,9 +261,14 @@ class I8kGui(QMainWindow):
                 self.monitorTimer.stop()
 
     def enable_ave_cpu_freq(self, checked):
+        """enable_ave_cpu_freq.
+
+        :param checked:
+        """
         self.use_cpu_ave_freq = checked == Qt.Checked
 
     def save_dialog_settings(self):
+        """save_dialog_settings."""
         if self.monitor_interval != int(self.interval_input.text()):
             self.monitor_interval = int(self.interval_input.text())
             self.monitorTimer.setInterval(self.monitor_interval)
@@ -217,10 +279,15 @@ class I8kGui(QMainWindow):
         self.settings_dialog.close()
 
     def close_info_dialog(self):
+        """close_info_dialog."""
         self.save_settings()
         self.info_dialog.close()
 
     def smbios_message(self, msg):
+        """smbios_message.
+
+        :param msg:
+        """
         split_msg = msg.split(': ')
         for item in split_msg:
             split_item = item.split('\n')
@@ -228,8 +295,10 @@ class I8kGui(QMainWindow):
                 self.smbios_data.append(part_item.strip())
 
     def check_thermal_control(self):
+        """check_thermal_control."""
         if self.p is not None:
             return
+
         active_services = []
         # check service files are available
         dell_service_file = Path(
@@ -238,10 +307,12 @@ class I8kGui(QMainWindow):
             print(
                 "Error systemctl dell-bios-fan-control.service not found")
             return False
+
         i8k_service_file = Path('/lib/systemd/system/i8kmon.service')
         if not i8k_service_file.is_file():
             print("Error systemctl i8kmon.service not found")
             return False
+
         # check which system services are active.
         # keep a reference to the QProcess (e.g. on self)
         # while it's running.
@@ -255,6 +326,7 @@ class I8kGui(QMainWindow):
             active_services.append(True)
         self.p.close()
         self.p = None
+
         # keep a reference to the QProcess (e.g. on self)
         # while it's running.
         self.p = QProcess()
@@ -273,80 +345,116 @@ class I8kGui(QMainWindow):
         # combination is a fail.
         return len(active_services) == 2
 
+    def check_prerequisites(self):
+        """check_thermal_prerequisites. Check for i8k and SMBIOS."""
+        # check for i8k
+        i8kmon_proc = Path("/proc/i8k").resolve()
+        # check for smbios-thermal-ctl
+        smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
+        # if both exist return True
+        if i8kmon_proc.is_file() and smbois_ctl.is_file():
+            return True
+        # else disable menu and return False
+        self.thermal_control_menu.setTitle("Thermal Control N/A")
+        self.thermal_menu_group.setDisabled(True)
+        self.alternative_cpu_temp = True
+        return False
+
     def bios_thermal_control(self, op=None):
+        """bios_thermal_control.
+
+        :param op:
+        """
+        # enable or disable BIOS thermal control
         if self.p is not None:
             return False
+
         # find smbios script
         thermal_file = Path(str(shutil.which("i8kgui_thermal_control")))
         if not thermal_file.is_file():
             thermal_file = Path("i8kgui_thermal_control")
+        # enable bios control and disable i8kmon
         if op == 'enable':
-            # Keep a reference to the QProcess (e.g. on self)
-            # while it's running.
             self.p = QProcess()
             self.p.readyReadStandardOutput.connect(
                 self.handle_thermal_stdout)
             self.p.readyReadStandardError.connect(
                 self.handle_thermal_stderr)
             self.p.stateChanged.connect(self.handle_process_state)
-            # Clean up once complete.
+            # clean up once complete
             self.p.finished.connect(self.thermal_process_finished)
             self.p.start("pkexec",
                          [str(thermal_file.resolve()), '--enable'])
+        # disable bios control and enable i8kmon
         elif op == 'disable':
-            # Keep a reference to the QProcess (e.g. on self)
-            # while it's running.
             self.p = QProcess()
             self.p.readyReadStandardOutput.connect(
                 self.handle_thermal_stdout)
             self.p.readyReadStandardError.connect(
                 self.handle_thermal_stderr)
             self.p.stateChanged.connect(self.handle_process_state)
-            # Clean up once complete.
+            # clean up once complete
             self.p.finished.connect(self.thermal_process_disable_finished)
             self.p.start("pkexec",
                          [str(thermal_file.resolve()), '--disable'])
+        # TODO - add status if installed system-wide
 
     def handle_thermal_stderr(self):
-        data = self.p.readAllStandardError()
-        stderr = bytes(data).decode("utf8")
-        # check if pkexec passwd input cancelled
-        if 'Request dismissed' in stderr:
-            self.p.finished.emit(1, QProcess.CrashExit)
-        else:
-            print(f"Error: handle_thermal_stderr {stderr}")
+        """handle_thermal_stderr."""
+        if self.p:
+            data = self.p.readAllStandardError()
+            stderr = bytes(data).decode("utf8")
+            # check if pkexec passwd input cancelled
+            if 'Request dismissed' in stderr:
+                self.p.finished.emit(1, QProcess.CrashExit)
+            else:
+                print(f"Error: handle_thermal_stderr {stderr}")
 
     def handle_thermal_stdout(self):
+        """handle_thermal_stdout."""
+        if not self.p:
+            return
+
         data = self.p.readAllStandardOutput()
         stdout = bytes(data).decode("utf8")
+
+        # get supported BIOS thermal modes
         if stdout.startswith('Supported Thermal Modes'):
             split_stdout = stdout.split('\n')
+            split_stdout = self.sanitise_thermal_modes(split_stdout)
             for item in split_stdout:
-                self.supported_thermal_modes_data.append(item.strip())
+                self.supported_thermal_modes_data.append(item)
+        # get current thermal mode
         elif stdout.startswith('Current Thermal Modes'):
             split_stdout = stdout.split('\n')
+            split_stdout = self.sanitise_thermal_modes(split_stdout)
             for item in split_stdout:
-                self.current_thermal_mode_data.append(item.strip())
+                self.current_thermal_mode_data.append(item)
+        # get return from successful change of mode
         elif stdout.startswith('Helper function to Set Thermal Mode'):
             split_stdout = stdout.split(': ')
             self.current_thermal_mode = split_stdout[1].strip().title(
             ).replace("-", " ")
 
     def close_process(self):
+        """close_process."""
         if self.p and self.p.state() != 0:
             self.p.close()
         self.p = None
 
     def kill_process(self):
+        """kill_process."""
         try:
-            self.p.terminate()
-            self.p.waitForFinished(1000)
-            self.p.kill()
+            if self.p:
+                self.p.terminate()
+                self.p.waitForFinished(1000)
+                self.p.kill()
         except Exception:
             pass
         self.p = None
 
     def thermal_selection_finished(self):
+        """thermal_selection_finished."""
         # bios mode change
         if self.p and self.p.exitCode() != 0:
             self.kill_process()
@@ -356,6 +464,7 @@ class I8kGui(QMainWindow):
             self.update_thermal_modes()
 
     def thermal_process_finished(self):
+        """thermal_process_finished."""
         # switch between i8k and bios modes
         if self.p and self.p.exitCode() != 0:
             self.kill_process()
@@ -369,6 +478,7 @@ class I8kGui(QMainWindow):
             self.update_thermal_modes()
 
     def thermal_process_disable_finished(self):
+        """thermal_process_disable_finished."""
         if self.p and self.p.exitCode() != 0:
             self.kill_process()
             self.thermal_checkbox.setChecked(True)
@@ -381,14 +491,17 @@ class I8kGui(QMainWindow):
             self.update_thermal_modes()
 
     def update_thermal_modes(self):
+        """update_thermal_modes."""
         if self.supported_thermal_modes_data:
-            self.supported_thermal_modes_data.pop(0)
-            self.supported_thermal_modes_data.pop()
-            self.supported_thermal_modes = self.supported_thermal_modes_data
+            self.supported_thermal_modes = self.sanitise_thermal_modes(
+                self.supported_thermal_modes_data)
             self.supported_thermal_modes_data = []
+
         if self.current_thermal_mode_data:
+            self.current_thermal_mode_data = self.sanitise_thermal_modes(
+                self.current_thermal_mode_data)
             self.current_thermal_mode = self.current_thermal_mode_data[
-                1].title().replace("-", " ")
+                0].title().replace("-", " ")
             self.current_thermal_mode_data = []
         # debug
         # print(f"disable supported modes: {self.supported_thermal_modes}")
@@ -398,11 +511,13 @@ class I8kGui(QMainWindow):
         self.switch_thermal_menu()
 
     def switch_thermal_menu(self):
+        """switch_thermal_menu."""
         # remove and re-build thermal menu
         self.remove_thermal_menu()
         self.build_thermal_menu()
 
     def remove_thermal_menu(self):
+        """remove_thermal_menu."""
         actions = self.thermal_menu_group.actions()
         for action in actions:
             self.thermal_control_menu.removeAction(action)
@@ -410,12 +525,18 @@ class I8kGui(QMainWindow):
         self.thermal_menu_group.setEnabled(False)
 
     def build_thermal_menu(self):
+        """build_thermal_menu."""
+        if not self.check_prerequisites():
+            return
+
         if self.thermal_menu_group.actions():
             return
+
         if self.bios_thermal_control_on:
             if self.supported_thermal_modes:
                 for item in self.supported_thermal_modes:
-                    thermal_menu_item = QAction(item, checkable=True)
+                    thermal_menu_item = QAction(item)
+                    thermal_menu_item.setCheckable(True)
                     self.thermal_control_menu.addAction(thermal_menu_item)
                     self.thermal_menu_group.addAction(thermal_menu_item)
                 self.thermal_menu_group.setEnabled(True)
@@ -440,21 +561,28 @@ class I8kGui(QMainWindow):
                                     f"{key}: Low: {value[2]}{self.degree_sign}C  "
                                     f"High: {value[3]}{self.degree_sign}C")
                             self.fan_mode_menu_item.setText(title)
-                            self.thermal_control_menu.addAction(self.fan_mode_menu_item)
-                            self.thermal_menu_group.addAction(self.fan_mode_menu_item)
+                            self.thermal_control_menu.addAction(
+                                self.fan_mode_menu_item)
+                            self.thermal_menu_group.addAction(
+                                self.fan_mode_menu_item)
                     elif key.startswith('Left Speed'):
                         title = f"Max {key}: {value[self.left_fan_mode]}"
                         self.left_fan_thermal_menu_item.setText(title)
-                        self.thermal_control_menu.addAction(self.left_fan_thermal_menu_item)
-                        self.thermal_menu_group.addAction(self.left_fan_thermal_menu_item)
+                        self.thermal_control_menu.addAction(
+                            self.left_fan_thermal_menu_item)
+                        self.thermal_menu_group.addAction(
+                            self.left_fan_thermal_menu_item)
                     elif key.startswith('Right Speed'):
                         title = f"Max {key}: {value[self.right_fan_mode]}"
                         self.right_fan_thermal_menu_item.setText(title)
-                        self.thermal_control_menu.addAction(self.right_fan_thermal_menu_item)
-                        self.thermal_menu_group.addAction(self.right_fan_thermal_menu_item)
+                        self.thermal_control_menu.addAction(
+                            self.right_fan_thermal_menu_item)
+                        self.thermal_menu_group.addAction(
+                            self.right_fan_thermal_menu_item)
                     else:
                         title = f"{key}: {value}{self.degree_sign}C"
-                        thermal_menu_item = QAction(title, checkable=False)
+                        thermal_menu_item = QAction(title)
+                        thermal_menu_item.setCheckable(False)
                         self.thermal_control_menu.addAction(thermal_menu_item)
                         self.thermal_menu_group.addAction(thermal_menu_item)
             self.thermal_menu_group.setEnabled(True)
@@ -462,14 +590,18 @@ class I8kGui(QMainWindow):
                 "I8K Thermal Management")
 
     def build_cpu_menu(self):
+        """build_cpu_menu."""
+        # build menu for per CPU core information
         for i in range(self.cpu_num):
             self.cpu_curr_freqs.append(
                 f"/sys/devices/system/cpu/cpu{i}/cpufreq/scaling_cur_freq")
-            c_action = QAction(f"CPU {i}", checkable=False)
+            c_action = QAction(f"CPU {i}")
+            c_action.setCheckable(False)
             self.cpu_details.addAction(c_action)
             self.cpu_freq_list.append(c_action)
 
     def get_cpu_tdp(self):
+        """get_cpu_tdp."""
         tdp = Path(
             "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
         ).resolve()
@@ -479,8 +611,10 @@ class I8kGui(QMainWindow):
         return self.cpu_tdp
 
     def get_i8k_information(self):
+        """get_i8k_information."""
         if self.critical_error:
             return
+
         info = {}
         i8k_config = None
         try:
@@ -489,11 +623,12 @@ class I8kGui(QMainWindow):
                 i8k_config = open(i8kmon_conf, 'r')
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage("i8kgui",
-                                  f"Error cannot find /etc/i8kmon.conf. "
-                                  f"Please check your config file \n\n{e}",
-                                  icon=QSystemTrayIcon.Critical,
-                                  msecs=10000)
+            if self.tray:
+                self.tray.showMessage("i8kgui",
+                                      f"Error cannot find /etc/i8kmon.conf. "
+                                      f"Please check your config file \n\n{e}",
+                                      icon=QSystemTrayIcon.Critical,
+                                      msecs=10000)
         else:
             if i8k_config:
                 for line in i8k_config:
@@ -528,42 +663,54 @@ class I8kGui(QMainWindow):
         return info
 
     def get_smbios_information(self):
-        if self.p is None:
-            # find smbios script
-            smbios_file = Path(str(shutil.which("smbios-sys-info")))
-            if not smbios_file.is_file():
+        """get_smbios_information."""
+        if self.p is not None:
+            return
+
+        # find smbios script
+        smbios_file = Path(str(shutil.which("smbios-sys-info")))
+        if not smbios_file.is_file():
+            if self.tray:
                 self.tray.showMessage(
                     "i8kgui",
                     "Error please install python3-libsmbios, "
                     "smbios-sys-info not found",
                     icon=QSystemTrayIcon.Critical,
                     msecs=10000)
-                return
-            # self.smbios_message("Executing process")
-            # Keep a reference to the QProcess (e.g. on self)
-            # while it's running.
-            self.p = QProcess()
-            self.p.readyReadStandardOutput.connect(self.handle_smbios_stdout)
-            self.p.readyReadStandardError.connect(self.handle_smbios_stderr)
-            self.p.stateChanged.connect(self.handle_process_state)
-            # Clean up once complete.
-            self.p.finished.connect(self.smbios_process_finished)
-            self.p.start("pkexec", [str(smbios_file.resolve())])
+            return
+        # self.smbios_message("Executing process")
+        # Keep a reference to the QProcess (e.g. on self)
+        # while it's running.
+        self.p = QProcess()
+        self.p.readyReadStandardOutput.connect(self.handle_smbios_stdout)
+        self.p.readyReadStandardError.connect(self.handle_smbios_stderr)
+        self.p.stateChanged.connect(self.handle_process_state)
+        # Clean up once complete.
+        self.p.finished.connect(self.smbios_process_finished)
+        self.p.start("pkexec", [str(smbios_file.resolve())])
 
     def handle_smbios_stderr(self):
-        data = self.p.readAllStandardError()
-        stderr = bytes(data).decode("utf8")
-        if 'Request dismissed' in stderr:
-            self.p.finished.emit(1, QProcess.CrashExit)
-        else:
-            print(f"Error: handle_smbios_stderr {stderr}")
+        """handle_smbios_stderr."""
+        if self.p:
+            data = self.p.readAllStandardError()
+            stderr = bytes(data).decode("utf8")
+            if 'Request dismissed' in stderr:
+                self.p.finished.emit(1, QProcess.CrashExit)
+            else:
+                print(f"Error: handle_smbios_stderr {stderr}")
 
     def handle_smbios_stdout(self):
-        data = self.p.readAllStandardOutput()
-        stdout = bytes(data).decode("utf8")
-        self.smbios_message(stdout)
+        """handle_smbios_stdout."""
+        if self.p:
+            data = self.p.readAllStandardOutput()
+            stdout = bytes(data).decode("utf8")
+            self.smbios_message(stdout)
 
     def handle_process_state(self, state):
+        """handle_process_state.
+
+        :param state:
+        """
         states = {
             QProcess.NotRunning: 'NotRunning',
             QProcess.Starting: 'Starting',
@@ -572,6 +719,7 @@ class I8kGui(QMainWindow):
         self.p_state = states[state]
 
     def smbios_process_finished(self):
+        """smbios_process_finished."""
         if self.p and self.p.exitCode() != 0:
             self.kill_process()
         else:
@@ -579,6 +727,7 @@ class I8kGui(QMainWindow):
             self.process_smbios_data()
 
     def process_smbios_data(self):
+        """process_smbios_data."""
         if self.smbios_data:
             self.smbios_data.pop()  # remove white space
             self.smbios_info = {
@@ -593,6 +742,7 @@ class I8kGui(QMainWindow):
             self.smbios_button.setDisabled(True)
 
     def create_info_dialog(self):
+        """create_info_dialog."""
         close_button = QPushButton("close", self.info_dialog)
         close_button.setMaximumWidth(100)
         close_button.clicked.connect(self.close_info_dialog)
@@ -631,6 +781,7 @@ class I8kGui(QMainWindow):
         self.info_dialog.move(fg.topLeft())
 
     def create_settings_dialog(self):
+        """create_settings_dialog."""
         self.save_button.setMaximumWidth(100)
 
         self.always_on_checkbox.setText("Collect statistics continuously")
@@ -670,6 +821,7 @@ class I8kGui(QMainWindow):
         self.settings_dialog.move(fg.topLeft())
 
     def load_sys_tray(self):
+        """load_sys_tray."""
         self.tray = QSystemTrayIcon(self)
         if self.tray.isSystemTrayAvailable():
             icon = QIcon(
@@ -717,12 +869,15 @@ class I8kGui(QMainWindow):
             self.close_app()
 
     def connect_cpupower(self):
+        """connect_cpupower."""
         # connect to cpupower-gui if found
         cpupower_file = Path(str(shutil.which("cpupower-gui")))
         if cpupower_file.is_file():
             self.cpu_governor.triggered.connect(self.show_cpupower)
+        # TODO - if not found show message to user to install
 
     def show_cpupower(self):
+        """show_cpupower."""
         self.cpupower = QProcess()
         self.cpupower.start("cpupower-gui")
         self.cpupower.waitForFinished()
@@ -734,18 +889,24 @@ class I8kGui(QMainWindow):
         self.cpupower = None
 
     def thermal_mode_selection(self, checked):
+        """thermal_mode_selection.
+
+        :param checked:
+        """
         if self.bios_thermal_control_on:
             if self.p is None:
                 # find libsmbios script
                 thermal_file = Path(str(shutil.which("smbios-thermal-ctl")))
                 if not thermal_file.is_file():
-                    self.tray.showMessage(
-                        "i8kgui",
-                        "Error please install python3-libsmbios, "
-                        "smbios-thermal-ctl not found.",
-                        icon=QSystemTrayIcon.Critical,
-                        msecs=10000)
+                    if self.tray:
+                        self.tray.showMessage(
+                            "i8kgui",
+                            "Error please install python3-libsmbios, "
+                            "smbios-thermal-ctl not found.",
+                            icon=QSystemTrayIcon.Critical,
+                            msecs=10000)
                     return
+
                 t_args = "--set-thermal-mode="
                 if checked.text() == 'Quiet':
                     t_args = t_args + "quiet"
@@ -773,9 +934,11 @@ class I8kGui(QMainWindow):
 
     @Slot()
     def message_clicked(self):
+        """message_clicked."""
         self.close_app()
 
     def read_i8kmon_info(self):
+        """read_i8kmon_info."""
         i8k_proc = None
         try:
             i8kmon_proc = Path("/proc/i8k").resolve()
@@ -783,11 +946,12 @@ class I8kGui(QMainWindow):
                 i8k_proc = open(i8kmon_proc, 'r')
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage("i8kgui",
-                                  f"Error cannot find i8k module. "
-                                  f"Please install/start i8kutils.\n\n{e}",
-                                  icon=QSystemTrayIcon.Critical,
-                                  msecs=10000)
+            if self.tray:
+                self.tray.showMessage("i8kgui",
+                                      f"Error cannot find i8k module. "
+                                      f"Please install/start i8kutils.\n\n{e}",
+                                      icon=QSystemTrayIcon.Critical,
+                                      msecs=10000)
         else:
             if i8k_proc:
                 line = i8k_proc.readline()  # output is only a single line.
@@ -817,8 +981,18 @@ class I8kGui(QMainWindow):
                 self.service_tag.setText(split_line[2].strip())
                 self.power_status.setText(split_line[8].strip())
                 self.button_status.setText(split_line[9].strip())
+            elif self.alternative_cpu_temp:
+                self.left_fan_rpm.setText(
+                    f"Left Fan RPM:          {psutil.sensors_fans()['dell_smm'][0][1]}")
+                self.right_fan_rpm.setText(
+                    f"Right Fan RPM:       {psutil.sensors_fans()['dell_smm'][1][1]}")
+                self.left_fan_status.setText(
+                    "Left Fan Mode:       N/A")
+                self.right_fan_status.setText(
+                    "Right Fan Mode:    N/A")
 
     def read_cpu_info(self):
+        """read_cpu_info."""
         # gather current CPU MHz.
         try:
             cpu_procs = []
@@ -833,11 +1007,12 @@ class I8kGui(QMainWindow):
                         all_mhz.append(mhz)
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage(
-                "i8kgui",
-                f"Error cannot find /proc/cpuinfo.\n\n{e}",
-                icon=QSystemTrayIcon.Critical,
-                msecs=10000)
+            if self.tray:
+                self.tray.showMessage(
+                    "i8kgui",
+                    f"Error cannot find /proc/cpuinfo.\n\n{e}",
+                    icon=QSystemTrayIcon.Critical,
+                    msecs=10000)
         else:
             if self.use_cpu_ave_freq:
                 total_mhz = sum(all_mhz)
@@ -853,8 +1028,13 @@ class I8kGui(QMainWindow):
                           f"{self.degree_sign}C")
             for cpu in cpu_procs:
                 cpu.close()
+            if self.alternative_cpu_temp:
+                self.cpu_temp.setText(f"CPU Temp:                "
+                                      f"{psutil.sensors_temperatures()['coretemp'][0][1]}"
+                                      f"{self.degree_sign}C")
 
     def read_cpu_gov_info(self):
+        """read_cpu_gov_info."""
         # gather current CPU governor
         gov_sys = None
         try:
@@ -865,13 +1045,14 @@ class I8kGui(QMainWindow):
                 gov_sys = open(scaling_sysfs, 'r')
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage(
-                "i8kgui",
-                f"Error cannot find "
-                f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
-                f"\n\n{e}",
-                icon=QSystemTrayIcon.Critical,
-                msecs=10000)
+            if self.tray:
+                self.tray.showMessage(
+                    "i8kgui",
+                    f"Error cannot find "
+                    f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
+                    f"\n\n{e}",
+                    icon=QSystemTrayIcon.Critical,
+                    msecs=10000)
         else:
             if gov_sys:
                 gov = gov_sys.readline().strip()
@@ -880,6 +1061,7 @@ class I8kGui(QMainWindow):
                     f"CPU Governor:        {gov.capitalize()}")
 
     def read_power_supply_status(self):
+        """read_power_supply_status."""
         # gather power supply status
         pwr_sys = None
         try:
@@ -888,12 +1070,13 @@ class I8kGui(QMainWindow):
                 pwr_sys = open(power_sysfs, 'r')
         except IOError as e:
             self.critical_error = True
-            self.tray.showMessage(
-                "i8kgui",
-                f"Error cannot find /sys/class/power_supply/AC/online."
-                f"\n\n{e}",
-                icon=QSystemTrayIcon.Critical,
-                msecs=10000)
+            if self.tray:
+                self.tray.showMessage(
+                    "i8kgui",
+                    f"Error cannot find /sys/class/power_supply/AC/online."
+                    f"\n\n{e}",
+                    icon=QSystemTrayIcon.Critical,
+                    msecs=10000)
         else:
             if pwr_sys:
                 pwr_ac = pwr_sys.readline().strip()
@@ -901,22 +1084,26 @@ class I8kGui(QMainWindow):
                 self.ac_power_supply_on = int(pwr_ac) == 1
 
     def read_proc(self):
+        """read_proc."""
         # read i8k, CPU and power values then update the system tray
         # and send a fake click to initiate live updating while
         # the system tray is in active use.
         if self.critical_error:
             return
+        self.read_power_supply_status()
         self.read_i8kmon_info()
         self.read_cpu_info()
         self.read_cpu_gov_info()
-        self.read_power_supply_status()
         # send fake single-click event as workaround
-        self.tray.activated.emit(QSystemTrayIcon.Trigger)
+        if self.tray:
+            self.tray.activated.emit(QSystemTrayIcon.Trigger)
 
     def update_i8k_ac_power(self):
+        """update_i8k_ac_power."""
         # update i8k thermal menu fan mode based on A/C power supply status
         if not self.i8k_info:
             return
+
         for key, value in self.i8k_info.items():
             if key.startswith('Fan Mode'):
                 mode = key.split('Fan Mode ')
@@ -933,6 +1120,7 @@ class I8kGui(QMainWindow):
                     break
 
     def update_i8k_thermal(self):
+        """update_i8k_thermal."""
         # update i8k thermal menu. Activated when i8k changes fan mode.
         if not self.i8k_info:
             self.i8k_info = self.get_i8k_information()
@@ -958,6 +1146,10 @@ class I8kGui(QMainWindow):
                     self.right_fan_thermal_menu_item.setText(title)
 
     def status(self, reason):
+        """status.
+
+        :param reason:
+        """
         # start live updating of values if system tray is in active use,
         # and employ workaround for timer being started upon load.
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
@@ -970,22 +1162,27 @@ class I8kGui(QMainWindow):
                     self.first_load = False
 
     def monitor(self):
+        """monitor."""
         self.read_proc()
 
     def refresh_monitor(self):
+        """refresh_monitor."""
         self.read_proc()
 
     def stop_monitor(self):
+        """stop_monitor."""
         if not self.always_on and self.monitorTimer.isActive():
             self.monitorTimer.stop()
 
     def show_settings(self):
+        """show_settings."""
         if not self.settings_dialog.isVisible():
             self.settings_dialog.show()
         self.settings_dialog.raise_()
         self.settings_dialog.setFocus()
 
     def show_info(self):
+        """show_info."""
         if not self.info_dialog.isVisible():
             self.info_dialog.show()
         self.info_dialog.raise_()
