@@ -28,6 +28,7 @@ i8kgui uses i8kutils to gather information such as CPU temperature and fan speed
 * Supports the gathering of (SM)BIOS information
 * Loads [cpupower-gui](https://github.com/vagnum08/cpupower-gui) (if installed) when `CPU Governor` is clicked
 * Option to display CPU frequency as either the highest (default) or the average value for all CPU cores
+* Graceful degradation when i8kutils and/or (SM)BIOS are not available
 
 ## Prerequisites
 
