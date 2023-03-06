@@ -99,7 +99,7 @@ git checkout development && git pull
 python3 setup.py install --user
 ```
 
-### System-wide with polkit actions
+### System-wide with polkit actions (Recommended)
 
 ```
 git clone https://github.com/razman786/i8kgui
