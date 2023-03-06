@@ -21,6 +21,7 @@ i8kgui uses i8kutils to gather information such as CPU temperature and fan speed
 
 * Displays CPU temperature, fan speeds and fan modes from i8kutils
 * Displays the current CPU frequency
+* Displays CPU load
 * Displays individual CPU core frequencies and temperatures
 * Shows the currently active i8kutils configuration being used
 * Supports (SM)BIOS thermal management modes
