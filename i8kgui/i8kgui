@@ -90,6 +90,7 @@ class I8kGui(QMainWindow):
         self.create_info_dialog()
         self.tray = None
         self.first_load = True
+        self.cpu_usage = QAction("CPU Usage:                ")
         self.cpu_mhz = QAction("CPU MHz:                ")
         self.cpu_details = QMenu("Per CPU Core                ")
         self.cpu_freq_list = []
@@ -835,6 +836,7 @@ class I8kGui(QMainWindow):
             self.tray_menu.aboutToShow.connect(self.monitor)
             self.tray_menu.aboutToHide.connect(self.stop_monitor)
             # setup display
+            self.tray_menu.addAction(self.cpu_usage)
             self.tray_menu.addAction(self.cpu_mhz)
             self.tray_menu.addAction(self.cpu_governor)
             self.connect_cpupower()
@@ -1014,6 +1016,9 @@ class I8kGui(QMainWindow):
                     icon=QSystemTrayIcon.Critical,
                     msecs=10000)
         else:
+            usage = psutil.cpu_percent(interval=0.0, percpu=False)
+            usage_per = psutil.cpu_percent(interval=0.0, percpu=True)
+            self.cpu_usage.setText(f"CPU Usage:              {usage:4.1f} %")
             if self.use_cpu_ave_freq:
                 total_mhz = sum(all_mhz)
                 mhz = total_mhz // len(all_mhz)
@@ -1023,8 +1028,8 @@ class I8kGui(QMainWindow):
             self.cpu_mhz.setText(
                 f"CPU Freq:                  {mhz} MHz")
             for i, c in enumerate(self.cpu_freq_list):
-                c.setText(f"CPU {i}:\t   {all_mhz[i]} MHz\t     "
-                          f"{psutil.sensors_temperatures()['coretemp'][i+1][1]}"
+                c.setText(f"CPU {i}:\t{usage_per[i]:4.1f} %\t{all_mhz[i]:4.0f} MHz\t"
+                          f"{psutil.sensors_temperatures()['coretemp'][i+1][1]:3.1f}"
                           f"{self.degree_sign}C")
             for cpu in cpu_procs:
                 cpu.close()
