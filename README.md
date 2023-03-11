@@ -133,7 +133,7 @@ The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf` configurat
 
 [Undervolt](https://github.com/georgewhewell/undervolt) is installed using the following settings to avoid thermal throttling: 
 ```
-undervolt -v --gpu -0 --core -120 --cache -120 --uncore -120 --analogio 0 --temp 100
+undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100
 ```
 
 ## Disclaimer
