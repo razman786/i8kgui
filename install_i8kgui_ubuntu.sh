@@ -70,7 +70,7 @@ finished() {
 	echo "**** sudo /root/.local/bin/undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100"
   echo "***************************************************************************************************************"
   echo ""
-	exit 1
+	exit 0
 	}
 
 # display help
