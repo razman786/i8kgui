@@ -20,6 +20,7 @@ display_usage() {
   echo -e "\nUsage: $0 [OPTION]\n"
   echo -e "-e, --enable     enable BIOS thermal control\n"
   echo -e "-d, --disable     disable BIOS thermal control\n"
+  echo -e "-s, --status     BIOS thermal control status\n"
 }
 
 # check whether user had supplied -h or --help.
@@ -34,6 +35,10 @@ fi
 
 if [[ ($1 == "--disable") || $1 == "-d" ]]; then
   status="disable"
+fi
+
+if [[ ($1 == "--status") || $1 == "-s" ]]; then
+  status="status"
 fi
 
 if [[ ! -f "/usr/sbin/smbios-thermal-ctl" ]]; then
@@ -57,4 +62,6 @@ elif [[ $status == "disable" ]]; then
   systemctl start i8kmon.service
   smbios-thermal-ctl -i | grep -A 4 'Supported Thermal Modes'
   smbios-thermal-ctl -g | grep -A 1 'Current Thermal Modes'
+elif [[ $status == "status" ]]; then
+  smbios-thermal-ctl -g | grep -A 1 'Current Thermal Modes' | (echo -n "Status " && cat)
 fi
