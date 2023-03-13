@@ -5,7 +5,7 @@
 ## Introduction
 
 A simple system tray GUI to display useful information from [i8kutils](https://github.com/vitorafsr/i8kutils) - created
-as a quick hack for my own needs.
+as a quick hack for my own needs (screenshots may be of an older version).
 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/7116312/202189994-63857806-d2bc-4ba5-81eb-74f6f9fc5e49.png" alt="i8k" width="150" />
