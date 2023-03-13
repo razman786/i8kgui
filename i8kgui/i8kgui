@@ -402,7 +402,18 @@ class I8kGui(QMainWindow):
             self.p.finished.connect(self.thermal_process_disable_finished)
             self.p.start("pkexec",
                          [str(thermal_file.resolve()), '--disable'])
-        # TODO - add status if installed system-wide
+        # get BIOS controlled thermal mode
+        elif op == 'status':
+            self.p = QProcess()
+            self.p.readyReadStandardOutput.connect(
+                self.handle_thermal_stdout)
+            self.p.readyReadStandardError.connect(
+                self.handle_thermal_stderr)
+            self.p.stateChanged.connect(self.handle_process_state)
+            # clean up once complete
+            self.p.finished.connect(self.thermal_process_finished)
+            self.p.start("pkexec",
+                         [str(thermal_file.resolve()), '--status'])
 
     def handle_thermal_stderr(self):
         """handle_thermal_stderr."""
@@ -440,6 +451,12 @@ class I8kGui(QMainWindow):
             split_stdout = stdout.split(': ')
             self.current_thermal_mode = split_stdout[1].strip().title(
             ).replace("-", " ")
+        elif stdout.startswith('Status Current Thermal Modes'):
+            print(f"stdout {stdout}")
+            split_stdout = stdout.split('\n')
+            split_stdout = self.sanitise_thermal_modes(split_stdout)
+            for item in split_stdout:
+                self.current_thermal_mode_data.append(item)
 
     def close_process(self):
         """close_process."""
