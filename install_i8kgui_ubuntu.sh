@@ -68,7 +68,7 @@ exception() {
 	exit 1
 	}
 
-# exception handling
+# finished message
 finished() {
   echo ""
   echo "********************************************** FINISHED \o/ ***************************************************"
@@ -125,35 +125,30 @@ else
 	exception
 fi
 
-echo "==== Installer has detected Linux distribution as $distro_name $distro_version ===="
-printf "==== Installer has detected Linux distribution as $distro_name $distro_version ====\n"
+# check if Ubuntu 20.04, add versions as needed
+if [[ $distro_version != 2004 ]]
+then
+  echo "==== Error Installer has detected incorrect Ubuntu version $distro_version ===="
+  printf "==== Error Installer has detected incorrect Ubuntu version $distro_version ====\n"
+else
+  echo "==== Installer has detected Linux distribution as $distro_name $distro_version ===="
+  printf "==== Installer has detected Linux distribution as $distro_name $distro_version ====\n"
+fi
 
 # check for pip3 and install if need be
-if command -v pip3 > /dev/null 
+if [[ $install_type == "all" ]]
 then
-  if [[ $VIRTUAL_ENV == "" ]]
+  if command -v pip3 > /dev/null 
   then
-    echo "==== Installer found pip3 (no VENV)... ===="
-    printf "==== Installer found pip3 (no VENV)... ====\n"
+    echo "==== Installer found pip3..."
+    printf "==== Installer found pip3...\n"
   else
-    if command -v $VIRTUAL_ENV/bin/pip3 > /dev/null
-    then
-      echo "==== Installer found pip3 (VENV)... ===="
-      printf "==== Installer found pip3 (VENV)... ====\n"
-      $VIRTUAL_ENV/bin/pip3 install -U pip setuptools wheel
-    else
-      echo "==== Installer did not find pip3 (VENV)... ===="
-      printf "==== Installer did not find pip3 (VENV)... ====\n"
-      $sudo_runner $apt_runner python3-setuptools python3-pip 2>>$error_file || exception
-      pip3 install -U pip setuptools wheel --user
-    fi
+    echo "==== Installer did not find pip3, installing..."
+    printf "==== Installer did not find pip3 installing...\n"
+    install_type="fullstack"
+    $sudo_runner $apt_runner python3-setuptools python3-pip 2>>$error_file || exception
+    pip3 install -U pip setuptools wheel --user
   fi
-else
-  echo "==== Installer did not find pip3 (no VENV)... ===="
-  printf "==== Installer did not find pip3 (no VENV)... ====\n"
-	install_type="fullstack"
-	$sudo_runner $apt_runner python3-setuptools python3-pip 2>>$error_file || exception
-  pip3 install -U pip setuptools wheel --user
 fi
 
 # check for Dell BIOS fan control
@@ -161,26 +156,26 @@ fan_control=`command -v dell-bios-fan-control`
 fan_control_service="/etc/systemd/system/dell-bios-fan-control.service"
 if [[ -n "$fan_control" ]]
 then
-	echo "==== Installer found i8kgui BIOS fan control dependency... ===="
-	printf "==== Installer found i8kgui BIOS fan control dependency... ====\n"
+	echo "==== Installer found i8kgui BIOS fan control dependency..."
+	printf "==== Installer found i8kgui BIOS fan control dependency...\n"
 	
 	if [[ ! -f $fan_control_service ]]
 	then
-		echo "==== Installer fullstack mode - i8kgui BIOS fan control service not found... ===="
-		printf "==== Installer fullstack mode - i8kgui BIOS fan control service not found...... ====\n"
+		echo "==== Installer fullstack mode - i8kgui BIOS fan control service not found..."
+		printf "==== Installer fullstack mode - i8kgui BIOS fan control service not found......\n"
 		install_type="fullstack"
 	fi
 else
 	install_type="fullstack"
-	echo "==== Installer fullstack mode - i8kgui BIOS fan control not found... ===="
-	printf "==== Installer fullstack mode - i8kgui BIOS fan control not found... ====\n"
+	echo "==== Installer fullstack mode - i8kgui BIOS fan control not found..."
+	printf "==== Installer fullstack mode - i8kgui BIOS fan control not found...\n"
 fi	
 
 # install Dell BIOS fan control
 if [[ $install_type == "fullstack" ]]
 then
-  echo "==== Installing i8kgui BIOS fan control dependency... ===="
-  printf "==== Installing i8kgui BIOS fan control dependency... ====\n"
+  echo "==== Installing i8kgui BIOS fan control dependency..."
+  printf "==== Installing i8kgui BIOS fan control dependency...\n"
   $sudo_runner $apt_runner git 2>>$error_file || exception
   $sudo_runner $apt_runner build-essential 2>>$error_file || exception
   cd /tmp || exception
@@ -198,40 +193,32 @@ then
   cd "${i8kgui_pwd}" || exception
 fi
 
-if [[ $install_type == "all" ]]
-then
-  echo "==== Installing i8kgui optional dependencies... ===="
-  printf "==== Installing i8kgui optional dependencies... ====\n"
-  if [[ $VIRTUAL_ENV == "" ]]
-  then
-    echo "==== Installing optional dependencies undervolt and cpupower-gui... ===="
-    printf "==== Installing optional dependencies undervolt and cpupower-gui... ====\n"
-    $sudo_runner $apt_runner cpupower-gui 1>>$log_file 2>>$error_file || exception
-    $sudo_runner pip3 install undervolt 1>>$log_file 2>>$error_file || exception
-  else
-    echo "==== Installing optional dependencies undervolt and cpupower-gui... ===="
-    printf "==== Installing optional dependencies undervolt and cpupower-gui... ====\n"
-    $sudo_runner $apt_runner cpupower-gui 1>>$log_file 2>>$error_file || exception
-    $sudo_runner pip3 install undervolt 1>>$log_file 2>>$error_file || exception
-  fi
-fi
-
-echo "==== Installing i8kgui dependencies i8kutils and libsmbios... ===="
-printf "==== Installing i8kgui dependencies i8kutils and libsmbios... ====\n"
-
+# install dependencies via packages by default
 if [[ $build_type == "package" ]]
 then
   # install i8kgui deps
-  $sudo_runner $apt_runner i8kutils python3-libsmbios 1>>$log_file 2>>$error_file || exception
+  echo "==== Installing i8kgui dependencies i8kutils and libsmbios..."
+  printf "==== Installing i8kgui dependencies i8kutils and libsmbios...\n"
+  $sudo_runner $apt_runner i8kutils python3-libsmbios 2>>$error_file || exception
+else
+  # source build not implemented
+  echo "Error $build_type is not implemented"
+  printf "Error $build_type is not implemented"
+  exception
+fi
+
+# install optional dependencies
+if [[ $install_type == "all" ]]
+then
+  echo "==== Installing optional dependencies undervolt and cpupower-gui..."
+  printf "==== Installing optional dependencies undervolt and cpupower-gui...\n"
+  $sudo_runner $apt_runner cpupower-gui 2>>$error_file || exception
+  $sudo_runner pip3 install undervolt 2>>$error_file || exception
 fi
 
 # install i8kgui
-if [[ $VIRTUAL_ENV == "" ]]
-then
-  echo "==== Installing i8kgui... ===="
-  printf "==== Installing i8kgui... ====\n"
-  $sudo_runner python3 setup.py install 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
-else
-  echo "currently not supported"
-  exception
-fi
+echo "==== Installing i8kgui..."
+printf "==== Installing i8kgui...\n"
+$sudo_runner python3 setup.py install 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+
+# EOF
