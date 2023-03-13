@@ -31,11 +31,24 @@ i8kgui uses i8kutils to gather information such as CPU temperature and fan speed
 * Option to display CPU frequency as either the highest (default) or the average value for all CPU cores
 * Graceful degradation when i8kutils and/or (SM)BIOS are not available
 
-## Prerequisites
+## Installation
+
+### Automated Installation (Recommended)
 
 This version has only been tested on Ubuntu 20.04 and with a Dell laptop.
 
-### i8kutils
+```
+git clone https://github.com/razman786/i8kgui
+./install_i8kgui_ubuntu.sh
+```
+
+### Manual Installation
+
+#### Prerequisites
+
+This version has only been tested on Ubuntu 20.04 and with a Dell laptop.
+
+##### i8kutils
 
 Please install and configure i8kutils from https://github.com/vitorafsr/i8kutils. On Ubuntu the following can be run:
 
@@ -43,7 +56,7 @@ Please install and configure i8kutils from https://github.com/vitorafsr/i8kutils
 sudo apt install i8kutils
 ```
 
-### Dell BIOS Fan Control
+##### Dell BIOS Fan Control
 
 Please install Dell BIOS Fan Control from https://github.com/TomFreudenberg/dell-bios-fan-control and install it
 into `/usr/bin/`.
@@ -67,7 +80,7 @@ sudo cp dell-bios-fan-control.service /etc/systemd/system/
 sudo systemctl enable dell-bios-fan-control.service
 ```
 
-### libsmbios
+##### libsmbios
 
 On Ubuntu 20.04 please install the following package to interface with (SM)BIOS information:
 
@@ -75,7 +88,7 @@ On Ubuntu 20.04 please install the following package to interface with (SM)BIOS 
 sudo apt install python3-libsmbios
 ```
 
-### cpupower-gui (optional)
+##### cpupower-gui (optional)
 
 On Ubuntu 20.04 install the following optional package to change the CPU Governor:
 
@@ -83,16 +96,16 @@ On Ubuntu 20.04 install the following optional package to change the CPU Governo
 sudo apt install cpupower-gui
 ```
 
-## Installation
+#### i8kgui Installation
 
-### Stable
+##### Stable
 
 ```
 git clone https://github.com/razman786/i8kgui
 python3 setup.py install --user
 ```
 
-### Development
+##### Development
 
 ```
 git clone https://github.com/razman786/i8kgui
@@ -100,7 +113,7 @@ git checkout development && git pull
 python3 setup.py install --user
 ```
 
-### System-wide with polkit actions (Recommended)
+##### System-wide with polkit actions (Recommended)
 
 ```
 git clone https://github.com/razman786/i8kgui
