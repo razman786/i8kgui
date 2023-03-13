@@ -42,6 +42,7 @@ class I8kGui(QMainWindow):
         self.critical_error = False
         self.degree_sign = u'\N{DEGREE SIGN}'
         self.use_cpu_ave_freq = False
+        self.thermal_modes = {}
         self.p_state = None
         self.p = None
         self.smbios_data = []
@@ -205,6 +206,9 @@ class I8kGui(QMainWindow):
             self.supported_thermal_modes = []
         else:
             self.supported_thermal_modes = list(supported_thermal_modes)
+
+        for mode in self.supported_thermal_modes:
+            self.thermal_modes[mode] = mode.lower().replace(" ", "-")
 
         # check current status of i8kmon services.
         i8k_is_active = self.check_thermal_control()
@@ -496,6 +500,9 @@ class I8kGui(QMainWindow):
         if self.supported_thermal_modes_data:
             self.supported_thermal_modes = self.sanitise_thermal_modes(
                 self.supported_thermal_modes_data)
+            # make dict with display and machine name variantions
+            for mode in self.supported_thermal_modes:
+                self.thermal_modes[mode] = mode.lower().replace(" ", "-")
             self.supported_thermal_modes_data = []
 
         if self.current_thermal_mode_data:
@@ -534,9 +541,10 @@ class I8kGui(QMainWindow):
             return
 
         if self.bios_thermal_control_on:
-            if self.supported_thermal_modes:
-                for item in self.supported_thermal_modes:
-                    thermal_menu_item = QAction(item)
+            if self.thermal_modes:
+                for _name, _mach_name in self.thermal_modes.items():
+                    thermal_menu_item = QAction(_name)
+                    thermal_menu_item.setObjectName(_mach_name)
                     thermal_menu_item.setCheckable(True)
                     self.thermal_control_menu.addAction(thermal_menu_item)
                     self.thermal_menu_group.addAction(thermal_menu_item)
@@ -908,29 +916,23 @@ class I8kGui(QMainWindow):
                             icon=QSystemTrayIcon.Critical,
                             msecs=10000)
                     return
-
-                t_args = "--set-thermal-mode="
-                if checked.text() == 'Quiet':
-                    t_args = t_args + "quiet"
-                elif checked.text() == 'Cool Bottom':
-                    t_args = t_args + "cool-bottom"
-                elif checked.text() == 'Balanced':
-                    t_args = t_args + "balanced"
-                elif checked.text() == 'Performance':
-                    t_args = t_args + "performance"
-                else:
-                    t_args = t_args + 'balanced'
-                # Keep a reference to the QProcess (e.g. on self)
-                # while it's running.
-                self.p = QProcess()
-                self.p.readyReadStandardOutput.connect(
-                    self.handle_thermal_stdout)
-                self.p.readyReadStandardError.connect(
-                    self.handle_thermal_stderr)
-                self.p.stateChanged.connect(self.handle_process_state)
-                # Clean up once complete.
-                self.p.finished.connect(self.thermal_selection_finished)
-                self.p.start("pkexec", [str(thermal_file.resolve()), t_args])
+                if self.current_thermal_mode != checked.text():
+                    t_args = "--set-thermal-mode="
+                    if checked.text() in self.thermal_modes:
+                        t_args += self.thermal_modes[checked.text()]
+                    else:
+                        t_args += 'balanced'
+                    # Keep a reference to the QProcess (e.g. on self)
+                    # while it's running.
+                    self.p = QProcess()
+                    self.p.readyReadStandardOutput.connect(
+                        self.handle_thermal_stdout)
+                    self.p.readyReadStandardError.connect(
+                        self.handle_thermal_stderr)
+                    self.p.stateChanged.connect(self.handle_process_state)
+                    # Clean up once complete.
+                    self.p.finished.connect(self.thermal_selection_finished)
+                    self.p.start("pkexec", [str(thermal_file.resolve()), t_args])
         else:
             print("Edit i8kmon config")  # TODO - add i8kmon config updating
 
