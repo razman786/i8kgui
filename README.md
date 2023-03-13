@@ -40,6 +40,7 @@ installation script undertakes a system-wide installation and installs optional 
 
 ```
 git clone https://github.com/razman786/i8kgui
+cd i8kgui
 ./install_i8kgui_ubuntu.sh
 ```
 
