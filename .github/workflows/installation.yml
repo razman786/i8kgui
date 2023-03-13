@@ -11,12 +11,14 @@ jobs:
   build-2004:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     
     # create log files
     - name: Set up Logging
       run: |
         touch ${{ runner.temp }}/log
+        touch i8kgui_installer.log
+        touch i8kgui_installer.err
 
     # setup compatible with 'act'
     - name: Set up runner VM
@@ -28,21 +30,85 @@ jobs:
     - name: Installation
       id: install
       run: |
-        python3 setup.py install --user
+        ./install_i8kgui_ubuntu.sh
 
-    # provide summary and ouput log files upon failure
+    # provide summary and output log files upon failure
     - name: Actions Failed
       if: failure()
       run: |
-        if [[ ${{ steps.setup-runner.outcome }} == 'failure' ]] || [[ ${{ steps.install-deps.outcome }} == 'failure' ]]
+        if [[ -f "i8kgui_installer.log" ]]
+        then
+          echo "==== Installer log output ===="
+          cat i8kgui_installer.log
+          echo "==== End installer log output ===="
+          echo ""
+          echo "==== Installer error log output ===="
+          cat i8kgui_installer.err
+          echo "==== End installer error log output ===="
+          echo ""
+        fi
+        if [[ ${{ steps.setup-runner.outcome }} == 'failure' ]] || [[ ${{ steps.install.outcome }} == 'failure' ]]
         then
           echo "==== System log output ===="
           cat ${{ runner.temp }}/log
           echo "==== End system log output ===="
           echo ""
+        fi
         echo "==== Step Outcomes ===="
         echo "setup-runner:       ${{ steps.setup-runner.outcome }}"
         echo "install:            ${{ steps.install.outcome }}"
         echo ""
         exit 2
 
+  # Ubuntu 22.04
+  build-2204:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+    
+    # create log files
+    - name: Set up Logging
+      run: |
+        touch ${{ runner.temp }}/log
+        touch i8kgui_installer.log
+        touch i8kgui_installer.err
+
+    # setup compatible with 'act'
+    - name: Set up runner VM
+      id: setup-runner
+      run: |
+        sudo apt update > ${{ runner.temp }}/log 2>&1
+        sudo apt -y install python3-pip > ${{ runner.temp }}/log 2>&1
+
+    - name: Installation
+      id: install
+      run: |
+        ./install_i8kgui_ubuntu.sh
+
+    # provide summary and output log files upon failure
+    - name: Actions Failed
+      if: failure()
+      run: |
+        if [[ -f "i8kgui_installer.log" ]]
+        then
+          echo "==== Installer log output ===="
+          cat i8kgui_installer.log
+          echo "==== End installer log output ===="
+          echo ""
+          echo "==== Installer error log output ===="
+          cat i8kgui_installer.err
+          echo "==== End installer error log output ===="
+          echo ""
+        fi
+        if [[ ${{ steps.setup-runner.outcome }} == 'failure' ]] || [[ ${{ steps.install.outcome }} == 'failure' ]]
+        then
+          echo "==== System log output ===="
+          cat ${{ runner.temp }}/log
+          echo "==== End system log output ===="
+          echo ""
+        fi
+        echo "==== Step Outcomes ===="
+        echo "setup-runner:       ${{ steps.setup-runner.outcome }}"
+        echo "install:            ${{ steps.install.outcome }}"
+        echo ""
+        exit 2

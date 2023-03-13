@@ -5,7 +5,7 @@
 ## Introduction
 
 A simple system tray GUI to display useful information from [i8kutils](https://github.com/vitorafsr/i8kutils) - created
-as a quick hack for my own needs.
+as a quick hack for my own needs (screenshots may be of an older version).
 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/7116312/202189994-63857806-d2bc-4ba5-81eb-74f6f9fc5e49.png" alt="i8k" width="150" />
@@ -21,6 +21,7 @@ i8kgui uses i8kutils to gather information such as CPU temperature and fan speed
 
 * Displays CPU temperature, fan speeds and fan modes from i8kutils
 * Displays the current CPU frequency
+* Displays CPU load
 * Displays individual CPU core frequencies and temperatures
 * Shows the currently active i8kutils configuration being used
 * Supports (SM)BIOS thermal management modes
@@ -30,11 +31,26 @@ i8kgui uses i8kutils to gather information such as CPU temperature and fan speed
 * Option to display CPU frequency as either the highest (default) or the average value for all CPU cores
 * Graceful degradation when i8kutils and/or (SM)BIOS are not available
 
-## Prerequisites
+## Installation
+
+### Automated Installation (Recommended)
+
+This version has only been tested on Ubuntu 20.04 and with a Dell laptop. The
+installation script undertakes a system-wide installation and installs optional components (i.e. `cpupower-gui` and `undervolt`).
+
+```
+git clone https://github.com/razman786/i8kgui
+cd i8kgui
+./install_i8kgui_ubuntu.sh
+```
+
+### Manual Installation
+
+#### Prerequisites
 
 This version has only been tested on Ubuntu 20.04 and with a Dell laptop.
 
-### i8kutils
+##### i8kutils
 
 Please install and configure i8kutils from https://github.com/vitorafsr/i8kutils. On Ubuntu the following can be run:
 
@@ -42,7 +58,7 @@ Please install and configure i8kutils from https://github.com/vitorafsr/i8kutils
 sudo apt install i8kutils
 ```
 
-### Dell BIOS Fan Control
+##### Dell BIOS Fan Control
 
 Please install Dell BIOS Fan Control from https://github.com/TomFreudenberg/dell-bios-fan-control and install it
 into `/usr/bin/`.
@@ -66,7 +82,7 @@ sudo cp dell-bios-fan-control.service /etc/systemd/system/
 sudo systemctl enable dell-bios-fan-control.service
 ```
 
-### libsmbios
+##### libsmbios
 
 On Ubuntu 20.04 please install the following package to interface with (SM)BIOS information:
 
@@ -74,7 +90,7 @@ On Ubuntu 20.04 please install the following package to interface with (SM)BIOS 
 sudo apt install python3-libsmbios
 ```
 
-### cpupower-gui (optional)
+##### cpupower-gui (optional)
 
 On Ubuntu 20.04 install the following optional package to change the CPU Governor:
 
@@ -82,16 +98,16 @@ On Ubuntu 20.04 install the following optional package to change the CPU Governo
 sudo apt install cpupower-gui
 ```
 
-## Installation
+#### i8kgui Installation
 
-### Stable
+##### Stable
 
 ```
 git clone https://github.com/razman786/i8kgui
 python3 setup.py install --user
 ```
 
-### Development
+##### Development
 
 ```
 git clone https://github.com/razman786/i8kgui
@@ -99,7 +115,7 @@ git checkout development && git pull
 python3 setup.py install --user
 ```
 
-### System-wide with polkit actions
+##### System-wide with polkit actions (Recommended)
 
 ```
 git clone https://github.com/razman786/i8kgui
@@ -132,7 +148,7 @@ The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf` configurat
 
 [Undervolt](https://github.com/georgewhewell/undervolt) is installed using the following settings to avoid thermal throttling: 
 ```
-undervolt -v --gpu -0 --core -120 --cache -120 --uncore -120 --analogio 0 --temp 100
+undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100
 ```
 
 ## Disclaimer
