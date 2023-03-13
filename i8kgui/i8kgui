@@ -1198,7 +1198,7 @@ if __name__ == '__main__':
     app = QApplication([])
     app.setOrganizationName("i8kgui")
     app.setApplicationName("i8kgui")
-    app.setApplicationVersion("0.4")
+    app.setApplicationVersion("0.8.1")
     # setup Dark Mode QPalette - initial setup
     palette = QPalette()
     palette.setColor(QPalette.Window, QColor(53, 53, 53))
