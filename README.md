@@ -35,7 +35,8 @@ i8kgui uses i8kutils to gather information such as CPU temperature and fan speed
 
 ### Automated Installation (Recommended)
 
-This version has only been tested on Ubuntu 20.04 and with a Dell laptop.
+This version has only been tested on Ubuntu 20.04 and with a Dell laptop. The
+installation script undertakes a system-wide installation and installs optional components (i.e. `cpupower-gui` and `undervolt`).
 
 ```
 git clone https://github.com/razman786/i8kgui
