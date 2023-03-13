@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program. If not, see <https://www.gnu.org/licenses/>.
 #
-# Installation script only tested with Ubuntu 20.04
+# Installation script only tested with Ubuntu 20.04 and partially with 22.04
 
 # add .local to $PATH 
 export PATH=$PATH:~/.local/bin
@@ -126,13 +126,14 @@ else
 fi
 
 # check if Ubuntu 20.04, add versions as needed
-if [[ $distro_version != 2004 ]]
+if [[ $distro_version == 2004 ]] || [[ $distro_version == 2204 ]]
 then
-  echo "==== Error Installer has detected incorrect Ubuntu version $distro_version ===="
-  printf "==== Error Installer has detected incorrect Ubuntu version $distro_version ====\n"
-else
   echo "==== Installer has detected Linux distribution as $distro_name $distro_version ===="
   printf "==== Installer has detected Linux distribution as $distro_name $distro_version ====\n"
+else
+  echo "==== Error Installer has detected incorrect Ubuntu version $distro_version ===="
+  printf "==== Error Installer has detected incorrect Ubuntu version $distro_version ====\n"
+  exception
 fi
 
 # check for pip3 and install if need be
