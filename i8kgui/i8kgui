@@ -90,12 +90,17 @@ class I8kGui(QMainWindow):
         self.create_info_dialog()
         self.tray = None
         self.first_load = True
+        self.cpu_temp_sensors = []
+        self.num_phy_cores = psutil.cpu_count(logical=False)
+        self.cpu_num = psutil.cpu_count()
+        self.cpu_sysfs_siblings = []
+        self.cpu_siblings = {}
+        self.detect_cpu()
         self.cpu_usage = QAction("CPU Usage:                ")
         self.cpu_mhz = QAction("CPU MHz:                ")
         self.cpu_details = QMenu("Per CPU Core                ")
         self.cpu_freq_list = []
         self.cpu_curr_freqs = []
-        self.cpu_num = psutil.cpu_count()
         self.build_cpu_menu()
         self.cpu_governor = QAction("CPU Governor:               ")
         self.cpu_temp = QAction("CPU Temp:                ")
@@ -103,7 +108,6 @@ class I8kGui(QMainWindow):
         self.right_fan_rpm = QAction("Right Fan RPM:       ")
         self.left_fan_status = QAction("Left Fan Mode:       ")
         self.right_fan_status = QAction("Right Fan Mode:    ")
-        self.ac_power_supply_on = None
         self.load_sys_tray()
 
     def close_app(self):
@@ -128,6 +132,51 @@ class I8kGui(QMainWindow):
         if button == QMessageBox.Ok:
             # disable bios thermal control (i.e. default is i8kmon)
             self.bios_thermal_control(op=cmd)
+
+    def detect_cpu(self):
+        """detect_cpu - find out if HT enabled, create a CPU sibling list and a CPU
+        temperature sensor list
+        """
+        # check if hyperthreading is enabled
+        try:
+            with open(self.ht_sysfs, 'r') as ht_sys:
+                for line in ht_sys:
+                    self.cpu_ht_enabled = int(line.strip('\n'))
+        except IOError as e:
+            # if HT status not available, assume HT enabled if coretemps are
+            # less than CPU count
+            self.cpu_ht_enabled = psutil.cpu_count() > len(psutil.sensors_temperatures()['coretemp']) - 1
+
+        # get sibling per CPU core information
+        num_cpu = int(self.cpu_num / 2) if self.cpu_ht_enabled else self.cpu_num
+        for i in range(self.cpu_num):
+            self.cpu_sysfs_siblings.append(
+                f"/sys/devices/system/cpu/cpu{i}/topology/thread_siblings_list")
+        try:
+            sysfs_files = []
+            for cpu in self.cpu_sysfs_siblings:
+                cpu_sysfs = Path(cpu).resolve()
+                if cpu_sysfs.is_file():
+                    with open(cpu_sysfs, 'r') as sysfs:
+                        sysfs_files.append(sysfs)
+                        for line in sysfs:
+                            pair = line.strip('\n').split(',')
+                            if len(self.cpu_siblings) < num_cpu:
+                                self.cpu_siblings[int(pair[0])] = int(pair[1])
+                            else:
+                                self.cpu_siblings[int(pair[1])] = int(pair[0])
+            # create CPU temp sensort list
+            j = 1
+            once = True
+            for c in self.cpu_siblings:
+                if j > 6 and once:
+                    j = 1
+                    once = False
+                self.cpu_temp_sensors.append(j)
+                j += 1
+        except IOError as e:
+            # TODO provide alternative if sysfs is not available
+            pass
 
     def sanitise_thermal_modes(self, modes):
         """sanitise_thermal_modes.
