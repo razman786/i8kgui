@@ -1124,11 +1124,10 @@ class I8kGui(QMainWindow):
             self.cpu_mhz.setText(
                 f"CPU Freq:                  {mhz} MHz")
             for i, c in enumerate(self.cpu_freq_list):
-                c.setText(f"CPU {i}:\t{usage_per[i]:4.1f} %\t{all_mhz[i]:4.0f} MHz\t"
-                          f"{psutil.sensors_temperatures()['coretemp'][i+1][1]:3.1f}"
+                j = self.cpu_temp_sensors[i]
+                c.setText(f"CPU {i:2.0f}:   {usage_per[i]:4.1f} %\t{all_mhz[i]:4.0f} MHz\t"
+                          f"{psutil.sensors_temperatures()['coretemp'][j][1]:3.1f}"
                           f"{self.degree_sign}C")
-            for cpu in cpu_procs:
-                cpu.close()
             if self.alternative_cpu_temp:
                 self.cpu_temp.setText(f"CPU Temp:                "
                                       f"{psutil.sensors_temperatures()['coretemp'][0][1]}"
