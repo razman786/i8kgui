@@ -898,8 +898,13 @@ class I8kGui(QMainWindow):
         """load_sys_tray."""
         self.tray = QSystemTrayIcon(self)
         if self.tray.isSystemTrayAvailable():
-            icon = QIcon(
-                f'{str(Path.home())}/.local/share/icons/i8kgui_icon.png')
+            # check system then user icon locations
+            icon_file = Path("/usr/share/icons/i8kgui_icon.png").resolve()
+            if not icon_file.is_file():
+                icon_file = Path(f'{str(Path.home())}/.local/share/icons/i8kgui_icon.png').resolve()
+                if not icon_file.is_file():
+                    pass
+            icon = QIcon(str(icon_file))
             if icon.pixmap(QSize(64, 64)).isNull():
                 icon = QIcon('icons/i8kgui_icon.png')
             self.tray.setIcon(icon)
