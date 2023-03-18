@@ -39,6 +39,14 @@ class I8kGui(QMainWindow):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
         self.critical_error = False
+        self.ac_power_supply_on = None
+        self.power_sysfs = None
+        self.scaling_sysfs = None
+        self.tdp = None
+        self.ht_sysfs = None
+        self.cpu_siblings_sysfs = None
+        # check dependencies
+        self.check_prerequisites()
         self.degree_sign = u'\N{DEGREE SIGN}'
         self.use_cpu_ave_freq = False
         self.thermal_modes = {}
@@ -400,12 +408,31 @@ class I8kGui(QMainWindow):
 
     def check_prerequisites(self):
         """check_thermal_prerequisites. Check for i8k and SMBIOS."""
+        # check sysfs
+        self.power_sysfs = Path("/sys/class/power_supply/AC/online").resolve()
+        self.scaling_sysfs = Path("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor").resolve()
+        self.tdp = Path("/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw").resolve()
+        self.ht_sysfs = Path("/sys/devices/system/cpu/smt/active").resolve()
+        self.cpu_siblings_sysfs = Path("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list").resolve()
+        sysfs_passed = bool(
+            (
+                self.power_sysfs.is_file()
+                and self.scaling_sysfs.is_file()
+                and self.tdp.is_file()
+                and self.ht_sysfs.is_file()
+                and self.cpu_siblings_sysfs.is_file()
+            )
+        )
         # check for i8k
-        i8kmon_proc = Path("/proc/i8k").resolve()
+        self.i8kmon_proc = Path("/proc/i8k").resolve()
+        self.i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
         # check for smbios-thermal-ctl
-        smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
-        # if both exist return True
-        if i8kmon_proc.is_file() and smbois_ctl.is_file():
+        self.smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
+        # if i8k is not available to gather fan rpms then information can be
+        # taken from the dell_smm_hwmon kernel module 
+        if sysfs_passed and self.i8kmon_proc.is_file() or self.smbois_ctl.is_file():
+            if not self.i8kmon_proc.is_file():
+                self.alternative_cpu_temp = True
             return True
         # else disable menu and return False
         self.thermal_control_menu.setTitle("Thermal Control N/A")
@@ -599,9 +626,6 @@ class I8kGui(QMainWindow):
 
     def build_thermal_menu(self):
         """build_thermal_menu."""
-        if not self.check_prerequisites():
-            return
-
         if self.thermal_menu_group.actions():
             return
 
