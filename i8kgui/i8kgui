@@ -115,7 +115,7 @@ class I8kGui(QMainWindow):
         self,
         cmd='disable',
         msg="Critical Service Error. "
-            "Please click 'OK' and possibly enter your password."):
+            "Please click 'OK' and enter your password if asked."):
         """thermal_error_dialog.
 
         :param cmd:
