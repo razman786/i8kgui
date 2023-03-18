@@ -700,12 +700,8 @@ class I8kGui(QMainWindow):
 
     def get_cpu_tdp(self):
         """get_cpu_tdp."""
-        tdp = Path(
-            "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
-        ).resolve()
-        if tdp.is_file():
-            with tdp.open('r') as f:
-                self.cpu_tdp.setText(f"{int(f.read().strip()) // 1000000} W")
+        with self.tdp.open('r') as f:
+            self.cpu_tdp.setText(f"{int(f.read().strip()) // 1000000} W")
         return self.cpu_tdp
 
     def get_i8k_information(self):
@@ -716,9 +712,7 @@ class I8kGui(QMainWindow):
         info = {}
         i8k_config = None
         try:
-            i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
-            if i8kmon_conf.is_file():
-                i8k_config = open(i8kmon_conf, 'r')
+            i8k_config = open(self.i8kmon_conf, 'r')
         except IOError as e:
             self.critical_error = True
             if self.tray:
@@ -920,6 +914,7 @@ class I8kGui(QMainWindow):
 
     def load_sys_tray(self):
         """load_sys_tray."""
+        # build desktop system tray
         self.tray = QSystemTrayIcon(self)
         if self.tray.isSystemTrayAvailable():
             # check system then user icon locations
@@ -1039,21 +1034,32 @@ class I8kGui(QMainWindow):
         """read_i8kmon_info."""
         i8k_proc = None
         try:
-            i8kmon_proc = Path("/proc/i8k").resolve()
-            if i8kmon_proc.is_file():
-                i8k_proc = open(i8kmon_proc, 'r')
+            if self.i8kmon_proc.is_file():
+                i8k_proc = open(self.i8kmon_proc, 'r')
         except IOError as e:
             self.critical_error = True
             if self.tray:
-                self.tray.showMessage("i8kgui",
-                                      f"Error cannot find i8k module. "
-                                      f"Please install/start i8kutils.\n\n{e}",
-                                      icon=QSystemTrayIcon.Critical,
-                                      msecs=10000)
+                self.tray.showMessage(
+                    "i8kgui",
+                    f"Error cannot find i8k module. Please install/start i8kutils.\n\n{e}",
+                    icon=QSystemTrayIcon.Critical,
+                    msecs=10000,
+                )
+
         else:
             if i8k_proc:
                 line = i8k_proc.readline()  # output is only a single line.
-                i8k_proc.close()
+                ret = i8k_proc.close()
+                if ret is not None:
+                    self.critical_error = True
+                    if self.tray:
+                        self.tray.showMessage(
+                            "i8kgui", "Error cannot find i8k.",
+                            icon=QSystemTrayIcon.Critical,
+                            msecs=10000,
+                        )
+
+                    return
                 split_line = line.split(' ')
                 self.cpu_temp.setText(f"CPU Temp:                "
                                       f"{split_line[3].strip()}"
@@ -1098,11 +1104,11 @@ class I8kGui(QMainWindow):
             for cpu in self.cpu_curr_freqs:
                 cpu_proc = Path(cpu).resolve()
                 if cpu_proc.is_file():
-                    proc = open(cpu_proc, 'r')
-                    cpu_procs.append(proc)
-                    for line in proc:
-                        mhz = int(line.strip('\n')) // 1000
-                        all_mhz.append(mhz)
+                    with open(cpu_proc, 'r') as proc:
+                        cpu_procs.append(proc)
+                        for line in proc:
+                            mhz = int(line.strip('\n')) // 1000
+                            all_mhz.append(mhz)
         except IOError as e:
             self.critical_error = True
             if self.tray:
@@ -1138,11 +1144,11 @@ class I8kGui(QMainWindow):
         # gather current CPU governor
         gov_sys = None
         try:
-            scaling_sysfs = Path(
-                "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
-            ).resolve()
-            if scaling_sysfs.is_file:
-                gov_sys = open(scaling_sysfs, 'r')
+            with open(self.scaling_sysfs, 'r') as gov_sys:
+                gov = gov_sys.readline().strip()
+                gov_sys.close()
+                self.cpu_governor.setText(
+                    f"CPU Governor:        {gov.capitalize()}")
         except IOError as e:
             self.critical_error = True
             if self.tray:
@@ -1153,21 +1159,13 @@ class I8kGui(QMainWindow):
                     f"\n\n{e}",
                     icon=QSystemTrayIcon.Critical,
                     msecs=10000)
-        else:
-            if gov_sys:
-                gov = gov_sys.readline().strip()
-                gov_sys.close()
-                self.cpu_governor.setText(
-                    f"CPU Governor:        {gov.capitalize()}")
 
     def read_power_supply_status(self):
         """read_power_supply_status."""
         # gather power supply status
         pwr_sys = None
         try:
-            power_sysfs = Path("/sys/class/power_supply/AC/online").resolve()
-            if power_sysfs.is_file():
-                pwr_sys = open(power_sysfs, 'r')
+            pwr_sys = open(self.power_sysfs, 'r')
         except IOError as e:
             self.critical_error = True
             if self.tray:
