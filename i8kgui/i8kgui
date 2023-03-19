@@ -104,18 +104,18 @@ class I8kGui(QMainWindow):
         self.cpu_sysfs_siblings = []
         self.cpu_siblings = {}
         self.detect_cpu()
-        self.cpu_usage = QAction("CPU Usage:                ")
-        self.cpu_mhz = QAction("CPU MHz:                ")
-        self.cpu_details = QMenu("Per CPU Core                ")
+        self.cpu_usage = QAction("CPU Usage:\t")
+        self.cpu_mhz = QAction("CPU MHz:\t")
+        self.cpu_details = QMenu("Per CPU Core\t")
         self.cpu_freq_list = []
         self.cpu_curr_freqs = []
         self.build_cpu_menu()
-        self.cpu_governor = QAction("CPU Governor:               ")
-        self.cpu_temp = QAction("CPU Temp:                ")
-        self.left_fan_rpm = QAction("Left Fan RPM:          ")
-        self.right_fan_rpm = QAction("Right Fan RPM:       ")
-        self.left_fan_status = QAction("Left Fan Mode:       ")
-        self.right_fan_status = QAction("Right Fan Mode:    ")
+        self.cpu_governor = QAction("CPU Governor:\t")
+        self.cpu_temp = QAction("CPU Temp:\t")
+        self.left_fan_rpm = QAction("Left Fan RPM:\t")
+        self.right_fan_rpm = QAction("Right Fan RPM:\t")
+        self.left_fan_status = QAction("Left Fan Mode:\t")
+        self.right_fan_status = QAction("Right Fan Mode:\t")
         self.load_sys_tray()
 
     def close_app(self):
@@ -1061,17 +1061,17 @@ class I8kGui(QMainWindow):
 
                     return
                 split_line = line.split(' ')
-                self.cpu_temp.setText(f"CPU Temp:                "
-                                      f"{split_line[3].strip()}"
+                self.cpu_temp.setText(f"CPU Temp:\t"
+                                      f"{float(split_line[3].strip()):16.1f}"
                                       f"{self.degree_sign}C")
                 self.left_fan_rpm.setText(
-                    f"Left Fan RPM:          {split_line[6].strip()}")
+                    f"Left Fan RPM:\t{split_line[6].strip().rjust(10)}")
                 self.right_fan_rpm.setText(
-                    f"Right Fan RPM:       {split_line[7].strip()}")
+                    f"Right Fan RPM:\t{split_line[7].strip().rjust(10)}")
                 self.left_fan_status.setText(
-                    f"Left Fan Mode:       {split_line[4].strip()}")
+                    f"Left Fan Mode:\t{split_line[4].strip().rjust(10)}")
                 self.right_fan_status.setText(
-                    f"Right Fan Mode:    {split_line[5].strip()}")
+                    f"Right Fan Mode:\t{split_line[5].strip().rjust(1)}")
                 if self.left_fan_mode != int(
                         split_line[4].strip()) or self.right_fan_mode != int(
                             split_line[5].strip()):
@@ -1086,14 +1086,12 @@ class I8kGui(QMainWindow):
                 self.power_status.setText(split_line[8].strip())
                 self.button_status.setText(split_line[9].strip())
             elif self.alternative_cpu_temp:
-                self.left_fan_rpm.setText(
-                    f"Left Fan RPM:          {psutil.sensors_fans()['dell_smm'][0][1]}")
-                self.right_fan_rpm.setText(
-                    f"Right Fan RPM:       {psutil.sensors_fans()['dell_smm'][1][1]}")
+                self.left_fan_rpm.setText(f"Left Fan RPM:\t{psutil.sensors_fans()['dell_smm'][0][1]}")
+                self.right_fan_rpm.setText(f"Right Fan RPM:\t{psutil.sensors_fans()['dell_smm'][1][1]}")
                 self.left_fan_status.setText(
-                    "Left Fan Mode:       N/A")
+                    "Left Fan Mode:\tN/A")
                 self.right_fan_status.setText(
-                    "Right Fan Mode:    N/A")
+                    "Right Fan Mode:\tN/A")
 
     def read_cpu_info(self):
         """read_cpu_info."""
@@ -1120,7 +1118,7 @@ class I8kGui(QMainWindow):
         else:
             usage = psutil.cpu_percent(interval=0.0, percpu=False)
             usage_per = psutil.cpu_percent(interval=0.0, percpu=True)
-            self.cpu_usage.setText(f"CPU Usage:              {usage:4.1f} %")
+            self.cpu_usage.setText(f"CPU Usage:\t{usage:15.1f} %")
             if self.use_cpu_ave_freq:
                 total_mhz = sum(all_mhz)
                 mhz = total_mhz // len(all_mhz)
@@ -1128,12 +1126,22 @@ class I8kGui(QMainWindow):
                 all_mhz.sort()
                 mhz = all_mhz[-1]
             self.cpu_mhz.setText(
-                f"CPU Freq:                  {mhz} MHz")
+                f"CPU Freq:\t{mhz:15.0f} MHz")
             for i, c in enumerate(self.cpu_freq_list):
                 j = self.cpu_temp_sensors[i]
-                c.setText(f"CPU {i:2.0f}:   {usage_per[i]:4.1f} %\t{all_mhz[i]:4.0f} MHz\t"
-                          f"{psutil.sensors_temperatures()['coretemp'][j][1]:3.1f}"
-                          f"{self.degree_sign}C")
+                # 7 chars
+                cpu_text = f"CPU {i: >02d}:  "
+                # 7 chars
+                usage = usage_per[i]
+                usage_text = f"{usage: >07.1f} %  "
+                # 8 chars
+                mhz_text = f"{all_mhz[i]:0>4d} MHz  "
+                # 7 chars
+                temp = psutil.sensors_temperatures()['coretemp'][j][1]
+                temp_text = f"{temp: >2.0f}{self.degree_sign}C"
+                # total 29
+                per_cpu_text = cpu_text+usage_text+mhz_text+temp_text.strip()
+                c.setText(f"{per_cpu_text[:34]}")
             if self.alternative_cpu_temp:
                 self.cpu_temp.setText(f"CPU Temp:                "
                                       f"{psutil.sensors_temperatures()['coretemp'][0][1]}"
@@ -1148,7 +1156,7 @@ class I8kGui(QMainWindow):
                 gov = gov_sys.readline().strip()
                 gov_sys.close()
                 self.cpu_governor.setText(
-                    f"CPU Governor:        {gov.capitalize()}")
+                    f"CPU Governor:       {gov.capitalize()}")
         except IOError as e:
             self.critical_error = True
             if self.tray:
