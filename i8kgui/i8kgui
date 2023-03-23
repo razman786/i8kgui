@@ -1129,19 +1129,20 @@ class I8kGui(QMainWindow):
                 f"CPU Freq:\t{mhz:15.0f} MHz")
             for i, c in enumerate(self.cpu_freq_list):
                 j = self.cpu_temp_sensors[i]
-                # 7 chars
-                cpu_text = f"CPU {i: >02d}:  "
-                # 7 chars
-                usage = usage_per[i]
-                usage_text = f"{usage: >07.1f} %  "
-                # 8 chars
-                mhz_text = f"{all_mhz[i]:0>4d} MHz  "
-                # 7 chars
-                temp = psutil.sensors_temperatures()['coretemp'][j][1]
-                temp_text = f"{temp: >2.0f}{self.degree_sign}C"
-                # total 29
-                per_cpu_text = cpu_text+usage_text+mhz_text+temp_text.strip()
-                c.setText(f"{per_cpu_text[:34]}")
+                # CPU number - 7 chars "CPU 01:"
+                _num = str("{:02d}".format(i))
+                cpu_text = f"CPU {_num}:"
+                # CPU usage - 7 chars "100.0 %"
+                usage = str(usage_per[i]).center(5)
+                usage_text = f"{usage} %"
+                # CPU MHz - 8 chars "4000 MHz"
+                mhz_text = f"{all_mhz[i]:04d} MHz"
+                # CPU core Temp - 7 chars "100 C"
+                temp = str("{:2.0f}".format(psutil.sensors_temperatures()['coretemp'][j][1])).rjust(4)
+                temp_text = f"{temp}{self.degree_sign}C"
+                # Output "CPU 01: 100.0 % 4000 MHz 80 C" - total 29 chars
+                per_cpu_text = cpu_text.rjust(7)+usage_text.center(10)+mhz_text.center(9)+temp_text.ljust(7)
+                c.setText(f"{per_cpu_text}".center(36))
             if self.alternative_cpu_temp:
                 self.cpu_temp.setText(f"CPU Temp:                "
                                       f"{psutil.sensors_temperatures()['coretemp'][0][1]}"
