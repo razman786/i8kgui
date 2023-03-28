@@ -156,7 +156,9 @@ class I8kGui(QMainWindow):
         except IOError:
             # if HT status not available, assume HT enabled if coretemps are
             # less than CPU count
-            self.cpu_ht_enabled = psutil.cpu_count() > len(psutil.sensors_temperatures()['coretemp']) - 1
+            self.cpu_ht_enabled = (
+                psutil.cpu_count() >
+                len(psutil.sensors_temperatures()['coretemp']) - 1)
 
         # get sibling per CPU core information
         num_cpu = int(self.cpu_num / 2) if self.cpu_ht_enabled else self.cpu_num
@@ -367,8 +369,7 @@ class I8kGui(QMainWindow):
         dell_service_file = Path(
             '/etc/systemd/system/dell-bios-fan-control.service')
         if not dell_service_file.is_file():
-            print(
-                "Error systemctl dell-bios-fan-control.service not found")
+            print("Error systemctl dell-bios-fan-control.service not found")
             return False
 
         i8k_service_file = Path('/lib/systemd/system/i8kmon.service')
@@ -417,20 +418,17 @@ class I8kGui(QMainWindow):
         self.ht_sysfs = "/sys/devices/system/cpu/smt/active"
         cpu_siblings_sysfs = "/sys/devices/system/cpu/cpu0/topology/thread_siblings_list"
         sysfs_passed = bool(
-            (
-                Path(self.power_sysfs).is_file()
-                and Path(self.scaling_sysfs).is_file()
-                and Path(self.tdp).is_file()
-                and Path(self.ht_sysfs).is_file()
-                and Path(cpu_siblings_sysfs).is_file()
-            )
-        )
+            (Path(self.power_sysfs).is_file()
+             and Path(self.scaling_sysfs).is_file()
+             and Path(self.tdp).is_file() and Path(self.ht_sysfs).is_file()
+             and Path(cpu_siblings_sysfs).is_file()))
         # check cpu coretemp sysfs interface
         try:
             for cpu in range(self.num_phy_cores):
                 self.coretemps_sysfs.append(
-                    glob.glob(f"/sys/devices/platform/coretemp.0/hwmon/*/temp{cpu + 1}_input")[0]
-                )
+                    glob.glob(
+                        f"/sys/devices/platform/coretemp.0/hwmon/*/temp{cpu + 1}_input"
+                    )[0])
             for t in self.coretemps_sysfs:
                 temp = Path(t).resolve()
                 if not temp.is_file():
@@ -1137,7 +1135,8 @@ class I8kGui(QMainWindow):
             coretemps = []
             for coretemp in self.coretemps_sysfs:
                 with open(coretemp, 'r') as cpu_temps:
-                    coretemps.extend(float(temp.strip('\n')) / 1000 for temp in cpu_temps)
+                    coretemps.extend(
+                        float(temp.strip('\n')) / 1000 for temp in cpu_temps)
         except IOError as e:
             self.critical_error = True
             if self.tray:
@@ -1159,8 +1158,7 @@ class I8kGui(QMainWindow):
                 all_mhz.sort()
                 mhz = all_mhz[-1]
             c_mhz = f"{mhz} MHz".rjust(20)
-            self.cpu_mhz.setText(
-                f"CPU Freq:\t{c_mhz}")
+            self.cpu_mhz.setText(f"CPU Freq:\t{c_mhz}")
             for i, c in enumerate(self.cpu_freq_list):
                 j = self.cpu_temp_sensors[i]
                 # CPU number - 7 chars "CPU 01:"
@@ -1175,7 +1173,8 @@ class I8kGui(QMainWindow):
                 temp = str("{:2.0f}".format(coretemps[j])).rjust(4)
                 temp_text = f"{temp}{self.degree_sign}C"
                 # Output "CPU 01: 100.0 % 4000 MHz 80 C" - total 29 chars
-                per_cpu_text = cpu_text.rjust(7)+usage_text.center(10)+mhz_text.center(9)+temp_text.ljust(7)
+                per_cpu_text = cpu_text.rjust(7) + usage_text.center(
+                    10) + mhz_text.center(9) + temp_text.ljust(7)
                 c.setText(f"{per_cpu_text}".center(36))
 
     def read_cpu_gov_info(self):
@@ -1184,14 +1183,12 @@ class I8kGui(QMainWindow):
             with open(self.scaling_sysfs, 'r') as gov_sys:
                 gov = gov_sys.readline().strip()
                 c_gov = f"{gov.capitalize()}".rjust(15)
-                self.cpu_governor.setText(
-                    f"CPU Governor: {c_gov}")
+                self.cpu_governor.setText(f"CPU Governor: {c_gov}")
         except IOError as e:
             self.critical_error = True
             if self.tray:
                 self.tray.showMessage(
-                    "i8kgui",
-                    f"Error cannot find "
+                    "i8kgui", f"Error cannot find "
                     f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
                     f"\n\n{e}",
                     icon=QSystemTrayIcon.Critical,
