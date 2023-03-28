@@ -102,7 +102,6 @@ class I8kGui(QMainWindow):
         self.tray = None
         self.first_load = True
         self.cpu_temp_sensors = []
-        self.num_phy_cores = psutil.cpu_count(logical=False)
         self.cpu_num = psutil.cpu_count()
         self.cpu_sysfs_siblings = []
         self.cpu_siblings = {}
@@ -153,7 +152,7 @@ class I8kGui(QMainWindow):
             with open(self.ht_sysfs, 'r') as ht_sys:
                 for line in ht_sys:
                     self.cpu_ht_enabled = int(line.strip('\n'))
-        except IOError as e:
+        except IOError:
             # if HT status not available, assume HT enabled if coretemps are
             # less than CPU count
             self.cpu_ht_enabled = psutil.cpu_count() > len(psutil.sensors_temperatures()['coretemp']) - 1
@@ -177,17 +176,16 @@ class I8kGui(QMainWindow):
                             else:
                                 self.cpu_siblings[int(pair[1])] = int(pair[0])
             # create CPU temp sensort list
-            j = 1
+            j = 0
             once = True
             for c in self.cpu_siblings:
-                if j > 6 and once:
-                    j = 1
+                if j > 5 and once:
+                    j = 0
                     once = False
                 self.cpu_temp_sensors.append(j)
                 j += 1
         except IOError as e:
-            # TODO provide alternative if sysfs is not available
-            pass
+            print(f"Error sysfs CPU siblings {e}")
 
     def sanitise_thermal_modes(self, modes):
         """sanitise_thermal_modes.
@@ -1118,13 +1116,15 @@ class I8kGui(QMainWindow):
             cpu_procs = []
             all_mhz = []
             for cpu in self.cpu_curr_freqs:
-                cpu_proc = Path(cpu).resolve()
-                if cpu_proc.is_file():
-                    with open(cpu_proc, 'r') as proc:
-                        cpu_procs.append(proc)
-                        for line in proc:
-                            mhz = int(line.strip('\n')) // 1000
-                            all_mhz.append(mhz)
+                with open(cpu, 'r') as proc:
+                    cpu_procs.append(proc)
+                    for temp in proc:
+                        mhz = int(temp.strip('\n')) // 1000
+                        all_mhz.append(mhz)
+            coretemps = []
+            for coretemp in self.coretemps_sysfs:
+                with open(coretemp, 'r') as cpu_temps:
+                    coretemps.extend(float(temp.strip('\n')) / 1000 for temp in cpu_temps)
         except IOError as e:
             self.critical_error = True
             if self.tray:
@@ -1132,7 +1132,9 @@ class I8kGui(QMainWindow):
                     "i8kgui",
                     f"Error cannot find /proc/cpuinfo.\n\n{e}",
                     icon=QSystemTrayIcon.Critical,
-                    msecs=10000)
+                    msecs=10000,
+                )
+
         else:
             usage = psutil.cpu_percent(interval=0.0, percpu=False)
             usage_per = psutil.cpu_percent(interval=0.0, percpu=True)
@@ -1156,7 +1158,7 @@ class I8kGui(QMainWindow):
                 # CPU MHz - 8 chars "4000 MHz"
                 mhz_text = f"{all_mhz[i]:04d} MHz"
                 # CPU core Temp - 7 chars "100 C"
-                temp = str("{:2.0f}".format(psutil.sensors_temperatures()['coretemp'][j][1])).rjust(4)
+                temp = str("{:2.0f}".format(coretemps[j])).rjust(4)
                 temp_text = f"{temp}{self.degree_sign}C"
                 # Output "CPU 01: 100.0 % 4000 MHz 80 C" - total 29 chars
                 per_cpu_text = cpu_text.rjust(7)+usage_text.center(10)+mhz_text.center(9)+temp_text.ljust(7)
