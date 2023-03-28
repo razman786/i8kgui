@@ -15,6 +15,8 @@
 # this program. If not, see <https://www.gnu.org/licenses/>.
 #
 from pathlib import Path
+import os
+import glob
 import shutil
 import warnings
 
@@ -44,7 +46,8 @@ class I8kGui(QMainWindow):
         self.scaling_sysfs = None
         self.tdp = None
         self.ht_sysfs = None
-        self.cpu_siblings_sysfs = None
+        self.num_phy_cores = psutil.cpu_count(logical=False)
+        self.coretemps_sysfs = []
         # check dependencies
         self.check_prerequisites()
         self.degree_sign = u'\N{DEGREE SIGN}'
@@ -409,30 +412,67 @@ class I8kGui(QMainWindow):
     def check_prerequisites(self):
         """check_thermal_prerequisites. Check for i8k and SMBIOS."""
         # check sysfs
-        self.power_sysfs = Path("/sys/class/power_supply/AC/online").resolve()
-        self.scaling_sysfs = Path("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor").resolve()
-        self.tdp = Path("/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw").resolve()
-        self.ht_sysfs = Path("/sys/devices/system/cpu/smt/active").resolve()
-        self.cpu_siblings_sysfs = Path("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list").resolve()
+        self.power_sysfs = "/sys/class/power_supply/AC/online"
+        self.scaling_sysfs = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+        self.tdp = "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
+        self.ht_sysfs = "/sys/devices/system/cpu/smt/active"
+        cpu_siblings_sysfs = "/sys/devices/system/cpu/cpu0/topology/thread_siblings_list"
         sysfs_passed = bool(
             (
-                self.power_sysfs.is_file()
-                and self.scaling_sysfs.is_file()
-                and self.tdp.is_file()
-                and self.ht_sysfs.is_file()
-                and self.cpu_siblings_sysfs.is_file()
+                Path(self.power_sysfs).is_file()
+                and Path(self.scaling_sysfs).is_file()
+                and Path(self.tdp).is_file()
+                and Path(self.ht_sysfs).is_file()
+                and Path(cpu_siblings_sysfs).is_file()
             )
         )
+        # check cpu coretemp sysfs interface
+        try:
+            for cpu in range(self.num_phy_cores):
+                self.coretemps_sysfs.append(
+                    glob.glob(f"/sys/devices/platform/coretemp.0/hwmon/*/temp{cpu + 1}_input")[0]
+                )
+            for t in self.coretemps_sysfs:
+                temp = Path(t).resolve()
+                if not temp.is_file():
+                    print(f"error file {t} is not available")
+        except IOError:
+            return False
         # check for i8k
-        self.i8kmon_proc = Path("/proc/i8k").resolve()
+        self.i8kmon_ctl = shutil.which("i8kctl")
+        self.i8kmon_fan1 = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan1_input"
+        )[0]
+        self.i8kmon_fan2 = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan2_input"
+        )[0]
+        self.i8kmon_fan1_target = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan1_target"
+        )[0]
+        self.i8kmon_fan2_target = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan2_target"
+        )[0]
+        self.i8kmon_temp = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/temp1_input"
+        )[0]
+        i8kmon_passed = bool(
+            (
+                Path(self.i8kmon_fan1).is_file()
+                and Path(self.i8kmon_fan2).is_file()
+                and Path(self.i8kmon_fan1_target).is_file()
+                and Path(self.i8kmon_fan2_target).is_file()
+                and Path(self.i8kmon_temp).is_file()
+            )
+        )
         self.i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
         # check for smbios-thermal-ctl
         self.smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
         # if i8k is not available to gather fan rpms then information can be
-        # taken from the dell_smm_hwmon kernel module 
-        if sysfs_passed and self.i8kmon_proc.is_file() or self.smbois_ctl.is_file():
-            if not self.i8kmon_proc.is_file():
-                self.alternative_cpu_temp = True
+        # taken from the dell_smm_hwmon kernel module
+        if sysfs_passed and i8kmon_passed and Path(str(
+                self.i8kmon_ctl)).is_file() and Path(
+                    self.smbois_ctl).is_file():
+            self.get_i8k_information()
             return True
         # else disable menu and return False
         self.thermal_control_menu.setTitle("Thermal Control N/A")
