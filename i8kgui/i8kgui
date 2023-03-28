@@ -1134,19 +1134,20 @@ class I8kGui(QMainWindow):
                     icon=QSystemTrayIcon.Critical,
                     msecs=10000,
                 )
-
         else:
             usage = psutil.cpu_percent(interval=0.0, percpu=False)
             usage_per = psutil.cpu_percent(interval=0.0, percpu=True)
-            self.cpu_usage.setText(f"CPU Usage:\t{usage:15.1f} %")
+            c_use = f"{usage} %".rjust(20)
+            self.cpu_usage.setText(f"CPU Usage:\t{c_use}")
             if self.use_cpu_ave_freq:
                 total_mhz = sum(all_mhz)
                 mhz = total_mhz // len(all_mhz)
             else:
                 all_mhz.sort()
                 mhz = all_mhz[-1]
+            c_mhz = f"{mhz} MHz".rjust(20)
             self.cpu_mhz.setText(
-                f"CPU Freq:\t{mhz:15.0f} MHz")
+                f"CPU Freq:\t{c_mhz}")
             for i, c in enumerate(self.cpu_freq_list):
                 j = self.cpu_temp_sensors[i]
                 # CPU number - 7 chars "CPU 01:"
@@ -1163,10 +1164,6 @@ class I8kGui(QMainWindow):
                 # Output "CPU 01: 100.0 % 4000 MHz 80 C" - total 29 chars
                 per_cpu_text = cpu_text.rjust(7)+usage_text.center(10)+mhz_text.center(9)+temp_text.ljust(7)
                 c.setText(f"{per_cpu_text}".center(36))
-            if self.alternative_cpu_temp:
-                self.cpu_temp.setText(f"CPU Temp:                "
-                                      f"{psutil.sensors_temperatures()['coretemp'][0][1]}"
-                                      f"{self.degree_sign}C")
 
     def read_cpu_gov_info(self):
         """read_cpu_gov_info."""
