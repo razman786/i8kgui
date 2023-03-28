@@ -1192,23 +1192,9 @@ class I8kGui(QMainWindow):
     def read_power_supply_status(self):
         """read_power_supply_status."""
         # gather power supply status
-        pwr_sys = None
-        try:
-            pwr_sys = open(self.power_sysfs, 'r')
-        except IOError as e:
-            self.critical_error = True
-            if self.tray:
-                self.tray.showMessage(
-                    "i8kgui",
-                    f"Error cannot find /sys/class/power_supply/AC/online."
-                    f"\n\n{e}",
-                    icon=QSystemTrayIcon.Critical,
-                    msecs=10000)
-        else:
-            if pwr_sys:
-                pwr_ac = pwr_sys.readline().strip()
-                pwr_sys.close()
-                self.ac_power_supply_on = int(pwr_ac) == 1
+        with open(self.power_sysfs, 'r') as pwr_sys:
+            pwr_ac = pwr_sys.readline().strip()
+            self.ac_power_supply_on = int(pwr_ac) == 1
 
     def read_proc(self):
         """read_proc."""
