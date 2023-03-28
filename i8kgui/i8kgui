@@ -738,7 +738,7 @@ class I8kGui(QMainWindow):
 
     def get_cpu_tdp(self):
         """get_cpu_tdp."""
-        with self.tdp.open('r') as f:
+        with open(self.tdp, 'r') as f:
             self.cpu_tdp.setText(f"{int(f.read().strip()) // 1000000} W")
         return self.cpu_tdp
 
