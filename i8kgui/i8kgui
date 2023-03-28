@@ -1166,15 +1166,13 @@ class I8kGui(QMainWindow):
                 c.setText(f"{per_cpu_text}".center(36))
 
     def read_cpu_gov_info(self):
-        """read_cpu_gov_info."""
-        # gather current CPU governor
-        gov_sys = None
+        """read_cpu_gov_info. Gather current CPU governor"""
         try:
             with open(self.scaling_sysfs, 'r') as gov_sys:
                 gov = gov_sys.readline().strip()
-                gov_sys.close()
+                c_gov = f"{gov.capitalize()}".rjust(15)
                 self.cpu_governor.setText(
-                    f"CPU Governor:       {gov.capitalize()}")
+                    f"CPU Governor: {c_gov}")
         except IOError as e:
             self.critical_error = True
             if self.tray:
