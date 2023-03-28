@@ -1072,66 +1072,44 @@ class I8kGui(QMainWindow):
 
     def read_i8kmon_info(self):
         """read_i8kmon_info."""
-        i8k_proc = None
-        try:
-            if self.i8kmon_proc.is_file():
-                i8k_proc = open(self.i8kmon_proc, 'r')
-        except IOError as e:
-            self.critical_error = True
-            if self.tray:
-                self.tray.showMessage(
-                    "i8kgui",
-                    f"Error cannot find i8k module. Please install/start i8kutils.\n\n{e}",
-                    icon=QSystemTrayIcon.Critical,
-                    msecs=10000,
-                )
-
-        else:
-            if i8k_proc:
-                line = i8k_proc.readline()  # output is only a single line.
-                ret = i8k_proc.close()
-                if ret is not None:
-                    self.critical_error = True
-                    if self.tray:
-                        self.tray.showMessage(
-                            "i8kgui", "Error cannot find i8k.",
-                            icon=QSystemTrayIcon.Critical,
-                            msecs=10000,
-                        )
-
-                    return
-                split_line = line.split(' ')
-                self.cpu_temp.setText(f"CPU Temp:\t"
-                                      f"{float(split_line[3].strip()):16.1f}"
-                                      f"{self.degree_sign}C")
-                self.left_fan_rpm.setText(
-                    f"Left Fan RPM:\t{split_line[6].strip().rjust(10)}")
-                self.right_fan_rpm.setText(
-                    f"Right Fan RPM:\t{split_line[7].strip().rjust(10)}")
-                self.left_fan_status.setText(
-                    f"Left Fan Mode:\t{split_line[4].strip().rjust(10)}")
-                self.right_fan_status.setText(
-                    f"Right Fan Mode:\t{split_line[5].strip().rjust(1)}")
-                if self.left_fan_mode != int(
-                        split_line[4].strip()) or self.right_fan_mode != int(
-                            split_line[5].strip()):
-                    self.left_fan_mode = int(split_line[4].strip())
-                    self.right_fan_mode = int(split_line[5].strip())
-                    self.update_i8k_thermal()
-                self.update_i8k_ac_power()
-
-                self.i8k_format_version.setText(split_line[0].strip())
-                self.bios_version.setText(split_line[1].strip())
-                self.service_tag.setText(split_line[2].strip())
-                self.power_status.setText(split_line[8].strip())
-                self.button_status.setText(split_line[9].strip())
-            elif self.alternative_cpu_temp:
-                self.left_fan_rpm.setText(f"Left Fan RPM:\t{psutil.sensors_fans()['dell_smm'][0][1]}")
-                self.right_fan_rpm.setText(f"Right Fan RPM:\t{psutil.sensors_fans()['dell_smm'][1][1]}")
-                self.left_fan_status.setText(
-                    "Left Fan Mode:\tN/A")
-                self.right_fan_status.setText(
-                    "Right Fan Mode:\tN/A")
+        with open(self.i8kmon_fan1) as fan1, \
+                open(self.i8kmon_fan2) as fan2, \
+                open(self.i8kmon_fan1_target) as fan1_target, \
+                open(self.i8kmon_fan2_target) as fan2_target, \
+                open(self.i8kmon_temp) as temp:
+            # format inputs
+            i8kmon_fan1 = fan1.readline().strip('\n')
+            i8kmon_fan2 = fan2.readline().strip('\n')
+            i8kmon_fan1_target = fan1_target.readline().strip('\n')
+            i8kmon_fan2_target = fan2_target.readline().strip('\n')
+            i8kmon_temp = temp.readline().strip('\n')
+            # cpu temp
+            c_temp = f"{float(i8kmon_temp.strip()) / 1000}{self.degree_sign}C".rjust(20)
+            self.cpu_temp.setText(f"CPU Temp:\t{c_temp}")
+            # left fan speed
+            l_fan = f"{i8kmon_fan1.strip()}  RPM".rjust(22)
+            self.left_fan_rpm.setText(f"Left Fan:\t{l_fan}")
+            # right fan speed
+            r_fan = f"{i8kmon_fan2.strip()}  RPM".rjust(22)
+            self.right_fan_rpm.setText(f"Right Fan:\t{r_fan}")
+            # left fan mode
+            left_mode = f"{self.left_fan_mode_map[int(i8kmon_fan1_target.strip())]}".rjust(
+                15)
+            self.left_fan_status.setText(f"Left Fan Mode:{left_mode}")
+            # right fan mode
+            right_mode = f"{self.right_fan_mode_map[int(i8kmon_fan2_target.strip())]}".rjust(
+                13)
+            self.right_fan_status.setText(f"Right Fan Mode:{right_mode}")
+            # update fan modes
+            if self.left_fan_mode != int(
+                    i8kmon_fan1_target.strip()) or self.right_fan_mode != int(
+                        i8kmon_fan2_target.strip()):
+                self.left_fan_mode = int(i8kmon_fan1_target.strip())
+                self.right_fan_mode = int(i8kmon_fan2_target.strip())
+                self.update_i8k_thermal()
+            # update power status
+            self.update_i8k_ac_power()
+            self.power_status.setText(str(self.ac_power_supply_on))
 
     def read_cpu_info(self):
         """read_cpu_info."""
