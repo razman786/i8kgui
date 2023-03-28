@@ -41,6 +41,8 @@ class I8kGui(QMainWindow):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
         self.critical_error = False
+        self.left_fan_mode_map = {}
+        self.right_fan_mode_map = {}
         self.ac_power_supply_on = None
         self.power_sysfs = None
         self.scaling_sysfs = None
@@ -114,8 +116,8 @@ class I8kGui(QMainWindow):
         self.build_cpu_menu()
         self.cpu_governor = QAction("CPU Governor:\t")
         self.cpu_temp = QAction("CPU Temp:\t")
-        self.left_fan_rpm = QAction("Left Fan RPM:\t")
-        self.right_fan_rpm = QAction("Right Fan RPM:\t")
+        self.left_fan_rpm = QAction("Left Fan:\t")
+        self.right_fan_rpm = QAction("Right Fan:\t")
         self.left_fan_status = QAction("Left Fan Mode:\t")
         self.right_fan_status = QAction("Right Fan Mode:\t")
         self.load_sys_tray()
@@ -687,36 +689,42 @@ class I8kGui(QMainWindow):
                 for key, value in self.i8k_info.items():
                     if key.startswith('Fan Mode'):
                         mode = key.split('Fan Mode ')
-                        if int(mode[1]) == self.left_fan_mode:
+                        if int(mode[1]) == self.left_fan_mode_map[self.left_fan_mode]:
+                            high = "High Trigger: ".rjust(10)
                             if self.ac_power_supply_on:
-                                title = (
-                                    f"{key}: Low: {value[0]}{self.degree_sign}C  "
-                                    f"High: {value[1]}{self.degree_sign}C")
+                                low_data = f"{value[0]}{self.degree_sign}C\n".rjust(25)
+                                high_data = f"{value[1]}{self.degree_sign}C".rjust(23)
                             else:
-                                title = (
-                                    f"{key}: Low: {value[2]}{self.degree_sign}C  "
-                                    f"High: {value[3]}{self.degree_sign}C")
+                                low_data = f"{value[2]}{self.degree_sign}C\n".rjust(25)
+                                high_data = f"{value[3]}{self.degree_sign}C".rjust(23)
+                            low = "Low Trigger: ".rjust(9)
+                            title = (f"{key}\n{low}{low_data}{high}{high_data}")
                             self.fan_mode_menu_item.setText(title)
                             self.thermal_control_menu.addAction(
                                 self.fan_mode_menu_item)
                             self.thermal_menu_group.addAction(
                                 self.fan_mode_menu_item)
                     elif key.startswith('Left Speed'):
-                        title = f"Max {key}: {value[self.left_fan_mode]}"
+                        data = f"{value[value.index(str(self.left_fan_mode))]}".rjust(
+                            15)
+                        title = f"Max {key}: "
                         self.left_fan_thermal_menu_item.setText(title)
                         self.thermal_control_menu.addAction(
                             self.left_fan_thermal_menu_item)
                         self.thermal_menu_group.addAction(
                             self.left_fan_thermal_menu_item)
                     elif key.startswith('Right Speed'):
-                        title = f"Max {key}: {value[self.right_fan_mode]}"
+                        data = f"{value[value.index(str(self.right_fan_mode))]}".rjust(
+                            15)
+                        title = f"Max {key}: "
                         self.right_fan_thermal_menu_item.setText(title)
                         self.thermal_control_menu.addAction(
                             self.right_fan_thermal_menu_item)
                         self.thermal_menu_group.addAction(
                             self.right_fan_thermal_menu_item)
                     else:
-                        title = f"{key}: {value}{self.degree_sign}C"
+                        data = f"{value}{self.degree_sign}C".rjust(16)
+                        title = f"{key}: {data}"
                         thermal_menu_item = QAction(title)
                         thermal_menu_item.setCheckable(False)
                         self.thermal_control_menu.addAction(thermal_menu_item)
@@ -790,6 +798,13 @@ class I8kGui(QMainWindow):
                             "set status(rightspeed)")[1].strip().strip('"')
                         info['Right Speed'] = list(conf.split())
                 i8k_config.close()
+        # set status(leftspeed/rightspeed) must be set in i8kmon.conf
+        if 'Left Speed' in info:
+            for i in range(len(info['Left Speed'])):
+                self.left_fan_mode_map[int(info['Left Speed'][i])] = i
+        if 'Right Speed' in info:
+            for i in range(len(info['Right Speed'])):
+                self.right_fan_mode_map[int(info['Right Speed'][i])] = i
         return info
 
     def get_smbios_information(self):
@@ -1215,15 +1230,16 @@ class I8kGui(QMainWindow):
         for key, value in self.i8k_info.items():
             if key.startswith('Fan Mode'):
                 mode = key.split('Fan Mode ')
-                if int(mode[1]) == self.left_fan_mode:
+                if int(mode[1]) == self.left_fan_mode_map[self.left_fan_mode]:
+                    high = "High Trigger: ".rjust(10)
                     if self.ac_power_supply_on:
-                        title = (f"{key}: Low: "
-                                 f"{value[0]}{self.degree_sign}C  "
-                                 f"High: {value[1]}{self.degree_sign}C")
+                        low_data = f"{value[0]}{self.degree_sign}C\n".rjust(25)
+                        high_data = f"{value[1]}{self.degree_sign}C".rjust(23)
                     else:
-                        title = (f"{key}: Low: "
-                                 f"{value[2]}{self.degree_sign}C  "
-                                 f"High: {value[3]}{self.degree_sign}C")
+                        low_data = f"{value[2]}{self.degree_sign}C\n".rjust(25)
+                        high_data = f"{value[3]}{self.degree_sign}C".rjust(23)
+                    low = "Low Trigger: ".rjust(9)
+                    title = (f"{key}\n{low}{low_data}{high}{high_data}")
                     self.fan_mode_menu_item.setText(title)
                     break
 
@@ -1236,22 +1252,29 @@ class I8kGui(QMainWindow):
             for key, value in self.i8k_info.items():
                 if key.startswith('Fan Mode'):
                     mode = key.split('Fan Mode ')
-                    if int(mode[1]) == self.left_fan_mode:
+                    if int(mode[1]) == self.left_fan_mode_map[self.left_fan_mode]:
+                        high = "High Trigger: ".rjust(10)
                         if self.ac_power_supply_on:
-                            title = (f"{key}: Low: "
-                                     f"{value[0]}{self.degree_sign}C  "
-                                     f"High: {value[1]}{self.degree_sign}C")
+                            low_data = f"{value[0]}{self.degree_sign}C\n".rjust(25)
+                            high_data = f"{value[1]}{self.degree_sign}C".rjust(23)
                         else:
-                            title = (f"{key}: Low: "
-                                     f"{value[2]}{self.degree_sign}C  "
-                                     f"High: {value[3]}{self.degree_sign}C")
+                            low_data = f"{value[2]}{self.degree_sign}C\n".rjust(25)
+                            high_data = f"{value[3]}{self.degree_sign}C".rjust(23)
+                        low = "Low Trigger: ".rjust(9)
+                        title = (f"{key}:\n{low}{low_data}{high}{high_data}")
                         self.fan_mode_menu_item.setText(title)
                 elif key.startswith('Left Speed'):
-                    title = f"Max {key}: {value[self.left_fan_mode]}"
-                    self.left_fan_thermal_menu_item.setText(title)
+                    left_speed = f"{value[value.index(str(self.left_fan_mode))]}".rjust(
+                        15)
+                    title = f"Max {key}: "
+                    self.left_fan_thermal_menu_item.setText(
+                        f"{title}{left_speed}")
                 elif key.startswith('Right Speed'):
-                    title = f"Max {key}: {value[self.right_fan_mode]}"
-                    self.right_fan_thermal_menu_item.setText(title)
+                    right_speed = f"{value[value.index(str(self.right_fan_mode))]}".rjust(
+                        12)
+                    title = f"Max {key}: "
+                    self.right_fan_thermal_menu_item.setText(
+                        f"{title}{right_speed}")
 
     def status(self, reason):
         """status.
