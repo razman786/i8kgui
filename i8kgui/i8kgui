@@ -1310,6 +1310,14 @@ class I8kGui(QMainWindow):
 
     def show_info(self):
         """show_info."""
+        with os.popen(self.i8kmon_ctl) as ctl:
+            line = ctl.readline().strip('\n').strip()
+            split_line = line.split(" ")
+            self.i8k_format_version.setText(split_line[0].strip())
+            self.bios_version.setText(split_line[1].strip())
+            self.service_tag.setText(split_line[2].strip())
+            self.button_status.setText(split_line[9].strip())
+
         if not self.info_dialog.isVisible():
             self.info_dialog.show()
         self.info_dialog.raise_()
