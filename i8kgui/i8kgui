@@ -122,7 +122,7 @@ class I8kGui(QMainWindow):
         self.load_sys_tray()
 
     def close_app(self):
-        """close_app."""
+        """close_app. Save settings and quit."""
         self.save_settings()
         app.quit()
 
@@ -410,7 +410,7 @@ class I8kGui(QMainWindow):
         return len(active_services) == 2
 
     def check_prerequisites(self):
-        """check_thermal_prerequisites. Check for i8k and SMBIOS."""
+        """check_thermal_prerequisites. Check for sysfs, i8k and SMBIOS."""
         # check sysfs
         self.power_sysfs = "/sys/class/power_supply/AC/online"
         self.scaling_sysfs = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
@@ -464,8 +464,8 @@ class I8kGui(QMainWindow):
         self.i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
         # check for smbios-thermal-ctl
         self.smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
-        # if i8k is not available to gather fan rpms then information can be
-        # taken from the dell_smm_hwmon kernel module
+        # majority of the information is taken from the
+        # dell_smm_hwmon kernel module
         if sysfs_passed and i8kmon_passed and Path(str(
                 self.i8kmon_ctl)).is_file() and Path(
                     self.smbois_ctl).is_file():
