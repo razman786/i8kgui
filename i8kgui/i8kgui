@@ -983,10 +983,10 @@ class I8kGui(QMainWindow):
             self.tray_menu.aboutToHide.connect(self.stop_monitor)
             # setup display
             self.tray_menu.addAction(self.cpu_usage)
+            self.tray_menu.addAction(self.cpu_temp)
             self.tray_menu.addAction(self.cpu_mhz)
             self.tray_menu.addAction(self.cpu_governor)
             self.connect_cpupower()
-            self.tray_menu.addAction(self.cpu_temp)
             self.tray_menu.addMenu(self.cpu_details)
             self.tray_menu.addAction(self.left_fan_rpm)
             self.tray_menu.addAction(self.right_fan_rpm)
