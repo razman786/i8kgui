@@ -110,6 +110,17 @@ class I8kGui(QMainWindow):
         self.cpu_usage = QAction("CPU Usage:\t")
         self.cpu_mhz = QAction("CPU MHz:\t")
         self.cpu_details = QMenu("Per CPU Core\t")
+        self.cpu_turbo = QMenu("CPU Turbo Boost\t")
+        self.cpu_turbo_enabled = QAction("CPU Turbo Boost:\tN/A")
+        self.cpu_turbo_enabled.setCheckable(False)
+        self.min_cpu_freq = QAction("CPU Min. Freq:\t0 MHz")
+        self.min_cpu_freq.setCheckable(False)
+        self.max_cpu_freq = QAction("CPU Max. Freq:\t0 MHz")
+        self.max_cpu_freq.setCheckable(False)
+        self.min_cpu_turbo = QAction("CPU Min. Turbo:\t0%")
+        self.min_cpu_turbo.setCheckable(False)
+        self.max_cpu_turbo = QAction("CPU Max. Turbo:\t0%")
+        self.max_cpu_turbo.setCheckable(False)
         self.cpu_freq_list = []
         self.cpu_curr_freqs = []
         self.build_cpu_menu()
@@ -435,6 +446,19 @@ class I8kGui(QMainWindow):
                     print(f"error file {t} is not available")
         except IOError:
             return False
+        # check cpu turbo sysfs interfaces
+        self.cpu_no_turbo = "/sys/devices/system/cpu/intel_pstate/no_turbo"
+        self.cpu_min_perf = "/sys/devices/system/cpu/intel_pstate/min_perf_pct"
+        self.cpu_max_perf = "/sys/devices/system/cpu/intel_pstate/max_perf_pct"
+        self.cpu_min_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq"
+        self.cpu_max_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq"
+        cpu_turbo_passed = bool(
+            (Path(self.cpu_no_turbo).is_file() and
+             Path(self.cpu_min_perf).is_file() and
+             Path(self.cpu_max_perf).is_file() and
+             Path(self.cpu_min_scaling).is_file() and
+             Path(self.cpu_max_scaling).is_file())
+        )
         # check for i8k
         self.i8kmon_ctl = shutil.which("i8kctl")
         self.i8kmon_fan1 = glob.glob(
@@ -466,7 +490,7 @@ class I8kGui(QMainWindow):
         self.smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
         # majority of the information is taken from the
         # dell_smm_hwmon kernel module
-        if sysfs_passed and i8kmon_passed and Path(str(
+        if sysfs_passed and cpu_turbo_passed and i8kmon_passed and Path(str(
                 self.i8kmon_ctl)).is_file() and Path(
                     self.smbois_ctl).is_file():
             self.get_i8k_information()
@@ -739,6 +763,12 @@ class I8kGui(QMainWindow):
             c_action.setCheckable(False)
             self.cpu_details.addAction(c_action)
             self.cpu_freq_list.append(c_action)
+        # build menu for CPU turbo boost stats
+        self.cpu_turbo.addAction(self.cpu_turbo_enabled)
+        self.cpu_turbo.addAction(self.min_cpu_freq)
+        self.cpu_turbo.addAction(self.max_cpu_freq)
+        self.cpu_turbo.addAction(self.min_cpu_turbo)
+        self.cpu_turbo.addAction(self.max_cpu_turbo)
 
     def get_cpu_tdp(self):
         """get_cpu_tdp."""
@@ -987,7 +1017,10 @@ class I8kGui(QMainWindow):
             self.tray_menu.addAction(self.cpu_mhz)
             self.tray_menu.addAction(self.cpu_governor)
             self.connect_cpupower()
+            self.tray_menu.addSeparator()
             self.tray_menu.addMenu(self.cpu_details)
+            self.tray_menu.addMenu(self.cpu_turbo)
+            self.tray_menu.addSeparator()
             self.tray_menu.addAction(self.left_fan_rpm)
             self.tray_menu.addAction(self.right_fan_rpm)
             self.tray_menu.addAction(self.left_fan_status)
@@ -1085,13 +1118,23 @@ class I8kGui(QMainWindow):
                 open(self.i8kmon_fan2) as fan2, \
                 open(self.i8kmon_fan1_target) as fan1_target, \
                 open(self.i8kmon_fan2_target) as fan2_target, \
-                open(self.i8kmon_temp) as temp:
+                open(self.i8kmon_temp) as temp, \
+                open(self.cpu_no_turbo) as no_turbo, \
+                open(self.cpu_min_perf) as min_perf, \
+                open(self.cpu_max_perf) as max_perf, \
+                open(self.cpu_min_scaling) as min_scaling, \
+                open(self.cpu_max_scaling) as max_scaling:
             # format inputs
             i8kmon_fan1 = fan1.readline().strip('\n')
             i8kmon_fan2 = fan2.readline().strip('\n')
             i8kmon_fan1_target = fan1_target.readline().strip('\n')
             i8kmon_fan2_target = fan2_target.readline().strip('\n')
             i8kmon_temp = temp.readline().strip('\n')
+            cpu_no_turbo = no_turbo.readline().strip('\n')
+            cpu_min_perf = min_perf.readline().strip('\n')
+            cpu_max_perf = max_perf.readline().strip('\n')
+            cpu_min_scaling = min_scaling.readline().strip('\n')
+            cpu_max_scaling = max_scaling.readline().strip('\n')
             # cpu temp
             c_temp = f"{float(i8kmon_temp.strip()) / 1000}{self.degree_sign}C".rjust(20)
             self.cpu_temp.setText(f"CPU Temp:\t{c_temp}")
@@ -1109,6 +1152,24 @@ class I8kGui(QMainWindow):
             right_mode = f"{self.right_fan_mode_map[int(i8kmon_fan2_target.strip())]}".rjust(
                 13)
             self.right_fan_status.setText(f"Right Fan Mode:{right_mode}")
+            # cpu turbo
+            if int(cpu_no_turbo.strip()) == 0:
+                t_status = 'Enabled'
+            else:
+                t_status = 'Disabled'
+            self.cpu_turbo_enabled.setText(f"CPU Turbo Boost:\t{t_status}")
+            c_min_freq = int(cpu_min_scaling.strip()) / 1000
+            c_min_freq = f"{c_min_freq:.0f} MHz".rjust(17)
+            self.min_cpu_freq.setText(f"CPU Min. Freq:\t{c_min_freq}")
+            c_max_freq = int(cpu_max_scaling.strip()) / 1000
+            c_max_freq = f"{c_max_freq:.0f} MHz".rjust(17)
+            self.max_cpu_freq.setText(f"CPU Max. Freq:\t{c_max_freq}")
+            c_min_turbo = cpu_min_perf.strip()
+            c_min_turbo = f"{c_min_turbo} %"
+            self.min_cpu_turbo.setText(f"CPU Min. Turbo:\t{c_min_turbo}")
+            c_max_turbo = cpu_max_perf.strip()
+            c_max_turbo = f"{c_max_turbo} %"
+            self.max_cpu_turbo.setText(f"CPU Max. Turbo:\t{c_max_turbo}")
             # update fan modes
             if self.left_fan_mode != int(
                     i8kmon_fan1_target.strip()) or self.right_fan_mode != int(
