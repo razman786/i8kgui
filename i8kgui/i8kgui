@@ -1017,7 +1017,6 @@ class I8kGui(QMainWindow):
             self.tray_menu.addAction(self.cpu_mhz)
             self.tray_menu.addAction(self.cpu_governor)
             self.connect_cpupower()
-            self.tray_menu.addSeparator()
             self.tray_menu.addMenu(self.cpu_details)
             self.tray_menu.addMenu(self.cpu_turbo)
             self.tray_menu.addSeparator()
