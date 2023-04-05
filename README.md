@@ -1,41 +1,41 @@
-# i8kgui
+# I8kGUI
 
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/razman786/i8kgui/installation.yml?branch=master)  ![GitHub release (latest by date)](https://img.shields.io/github/v/release/razman786/i8kgui)
 
 ## Introduction
 
-A simple system tray GUI to display useful information from [i8kutils](https://github.com/vitorafsr/i8kutils) - created
-as a quick hack for my own needs (screenshots may be of an older version).
+A Dell thermal management GUI to control fan speeds and monitor temperatures. Information is taken from [i8kutils](https://github.com/vitorafsr/i8kutils), Sysfs and [(SM)BIOS](https://github.com/dell/libsmbios) - created as a quick hack for my own needs (screenshots may be of an older version).
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/7116312/202189994-63857806-d2bc-4ba5-81eb-74f6f9fc5e49.png" alt="i8k" width="150" />
-  <img src="https://user-images.githubusercontent.com/7116312/202190335-30de2c06-a3f2-4912-a9e7-3f28e4585633.png" alt="bios"width="150" />
-  <img src="https://user-images.githubusercontent.com/7116312/202192230-873dcc5a-91e3-401b-9c91-6c074e5cba04.png" alt="cores"width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/230130936-98105ddc-edcb-4499-b1a0-7c0b9337c1f4.png" alt="i8k" width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/230131129-eb4dbe21-31f9-45b0-8e72-9fa2e2d2ba03.png" alt="bios"width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/230131272-964d33ef-0058-4e74-ba82-f09b60d41fdb.png" alt="cores"width="150" />
+  <img src="https://user-images.githubusercontent.com/7116312/230131580-7ae857d1-8754-45c9-92d4-e070c9e6c9f0.png" alt="turbo"width="150" />
   <img src="https://user-images.githubusercontent.com/7116312/154058677-ee7d8858-6cfa-48a8-8dff-f813439bec64.png" alt="settings" width="250" />
   <img src="https://user-images.githubusercontent.com/7116312/202192004-1bc59976-edd5-4d81-a46c-b9450d677ca8.png" alt="info" width="250" />
 </p>
 
-i8kgui uses i8kutils to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
+i8kgui uses i8kutils and Sysfs to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
 
 ### Features
 
-* Displays CPU temperature, fan speeds and fan modes from i8kutils
+* Displays CPU temperature, fan speeds and fan modes
 * Displays the current CPU frequency
 * Displays CPU load
 * Displays individual CPU core frequencies and temperatures
+* Displays CPU Turbo information
+* Gathers metrics from the `dell_smm_hwmon` kernel module via Sysfs, instead of using `/proc/i8k`
 * Shows the currently active i8kutils configuration being used
 * Supports (SM)BIOS thermal management modes
-* Displays i8k module information
-* Supports the gathering of (SM)BIOS information
 * Loads [cpupower-gui](https://github.com/vagnum08/cpupower-gui) (if installed) when `CPU Governor` is clicked
 * Option to display CPU frequency as either the highest (default) or the average value for all CPU cores
-* Graceful degradation when i8kutils and/or (SM)BIOS are not available
+* Adds polkit action configurations to allow users to change fan modes without a password
 
 ## Installation
 
 ### Automated Installation (Recommended)
 
-This version has only been tested on Ubuntu 20.04 and with a Dell laptop. The
+This version has only been tested on Ubuntu 20.04 (it should also work on 22.04) and with a Dell laptop (XPS 7590). The
 installation script undertakes a system-wide installation and installs optional components (i.e. `cpupower-gui` and `undervolt`).
 
 ```
@@ -48,7 +48,7 @@ cd i8kgui
 
 #### Prerequisites
 
-This version has only been tested on Ubuntu 20.04 and with a Dell laptop.
+This version has only been used on Ubuntu 20.04 and with a Dell XPS laptop.
 
 ##### i8kutils
 
@@ -100,6 +100,13 @@ sudo apt install cpupower-gui
 
 #### i8kgui Installation
 
+##### System-wide with polkit actions (Recommended)
+
+```
+git clone https://github.com/razman786/i8kgui
+sudo python3 setup.py install
+```
+
 ##### Stable
 
 ```
@@ -113,13 +120,6 @@ python3 setup.py install --user
 git clone https://github.com/razman786/i8kgui
 git checkout development && git pull
 python3 setup.py install --user
-```
-
-##### System-wide with polkit actions (Recommended)
-
-```
-git clone https://github.com/razman786/i8kgui
-sudo python3 setup.py install
 ```
 
 ## Usage
@@ -140,11 +140,11 @@ By default, i8kgui displays i8kutils information, however it does facilitate the
 enable this feature typically four fan modes will be available. Please note that, using 'Quiet', or 'Cool Bottom' modes
 will reduce performance due to CPU power capping. Changing (SM)BIOS thermal modes may require entering a user password.
 
-Disabling (SM)BIOS thermal management will re-enable i8kutils's management and configuration.
+Disabling (SM)BIOS thermal management in the settings will re-enable i8kutils's management and configuration.
 
 ## Personal configuration
 
-The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf` configuration file, used on a Dell XPS 7590 (Intel i7). 
+The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf` configuration file, used on a Dell XPS 7590 (Intel i7, BIOS version 1.14.1). 
 
 [Undervolt](https://github.com/georgewhewell/undervolt) is installed using the following settings to avoid thermal throttling: 
 ```

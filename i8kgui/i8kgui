@@ -14,8 +14,9 @@
 # You should have received a copy of the GNU General Public License along with
 # this program. If not, see <https://www.gnu.org/licenses/>.
 #
-
 from pathlib import Path
+import os
+import glob
 import shutil
 import warnings
 
@@ -40,6 +41,17 @@ class I8kGui(QMainWindow):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
         self.critical_error = False
+        self.left_fan_mode_map = {}
+        self.right_fan_mode_map = {}
+        self.ac_power_supply_on = None
+        self.power_sysfs = None
+        self.scaling_sysfs = None
+        self.tdp = None
+        self.ht_sysfs = None
+        self.num_phy_cores = psutil.cpu_count(logical=False)
+        self.coretemps_sysfs = []
+        # check dependencies
+        self.check_prerequisites()
         self.degree_sign = u'\N{DEGREE SIGN}'
         self.use_cpu_ave_freq = False
         self.thermal_modes = {}
@@ -54,7 +66,6 @@ class I8kGui(QMainWindow):
         self.always_on = False
         self.bios_thermal_control_on = False
         self.tray_menu = QMenu()
-        self.alternative_cpu_temp = False
         self.thermal_menu_group = QActionGroup(self.tray_menu)
         self.thermal_control_menu = QMenu("I8K Thermal Management")
         self.monitor_interval = 1000
@@ -91,24 +102,38 @@ class I8kGui(QMainWindow):
         self.create_info_dialog()
         self.tray = None
         self.first_load = True
-        self.cpu_usage = QAction("CPU Usage:                ")
-        self.cpu_mhz = QAction("CPU MHz:                ")
-        self.cpu_details = QMenu("Per CPU Core                ")
+        self.cpu_temp_sensors = []
+        self.cpu_num = psutil.cpu_count()
+        self.cpu_sysfs_siblings = []
+        self.cpu_siblings = {}
+        self.detect_cpu()
+        self.cpu_usage = QAction("CPU Usage:\t")
+        self.cpu_mhz = QAction("CPU MHz:\t")
+        self.cpu_details = QMenu("Per CPU Core\t")
+        self.cpu_turbo = QMenu("CPU Turbo Boost\t")
+        self.cpu_turbo_enabled = QAction("CPU Turbo Boost:\tN/A")
+        self.cpu_turbo_enabled.setCheckable(False)
+        self.min_cpu_freq = QAction("CPU Min. Freq:\t0 MHz")
+        self.min_cpu_freq.setCheckable(False)
+        self.max_cpu_freq = QAction("CPU Max. Freq:\t0 MHz")
+        self.max_cpu_freq.setCheckable(False)
+        self.min_cpu_turbo = QAction("CPU Min. Turbo:\t0%")
+        self.min_cpu_turbo.setCheckable(False)
+        self.max_cpu_turbo = QAction("CPU Max. Turbo:\t0%")
+        self.max_cpu_turbo.setCheckable(False)
         self.cpu_freq_list = []
         self.cpu_curr_freqs = []
-        self.cpu_num = psutil.cpu_count()
         self.build_cpu_menu()
-        self.cpu_governor = QAction("CPU Governor:               ")
-        self.cpu_temp = QAction("CPU Temp:                ")
-        self.left_fan_rpm = QAction("Left Fan RPM:          ")
-        self.right_fan_rpm = QAction("Right Fan RPM:       ")
-        self.left_fan_status = QAction("Left Fan Mode:       ")
-        self.right_fan_status = QAction("Right Fan Mode:    ")
-        self.ac_power_supply_on = None
+        self.cpu_governor = QAction("CPU Governor:\t")
+        self.cpu_temp = QAction("CPU Temp:\t")
+        self.left_fan_rpm = QAction("Left Fan:\t")
+        self.right_fan_rpm = QAction("Right Fan:\t")
+        self.left_fan_status = QAction("Left Fan Mode:\t")
+        self.right_fan_status = QAction("Right Fan Mode:\t")
         self.load_sys_tray()
 
     def close_app(self):
-        """close_app."""
+        """close_app. Save settings and quit."""
         self.save_settings()
         app.quit()
 
@@ -116,7 +141,7 @@ class I8kGui(QMainWindow):
         self,
         cmd='disable',
         msg="Critical Service Error. "
-            "Please click 'OK' and possibly enter your password."):
+            "Please click 'OK' and enter your password if asked."):
         """thermal_error_dialog.
 
         :param cmd:
@@ -129,6 +154,52 @@ class I8kGui(QMainWindow):
         if button == QMessageBox.Ok:
             # disable bios thermal control (i.e. default is i8kmon)
             self.bios_thermal_control(op=cmd)
+
+    def detect_cpu(self):
+        """detect_cpu - find out if HT enabled, create a CPU sibling list and a CPU
+        temperature sensor list
+        """
+        # check if hyperthreading is enabled
+        try:
+            with open(self.ht_sysfs, 'r') as ht_sys:
+                for line in ht_sys:
+                    self.cpu_ht_enabled = int(line.strip('\n'))
+        except IOError:
+            # if HT status not available, assume HT enabled if coretemps are
+            # less than CPU count
+            self.cpu_ht_enabled = (
+                psutil.cpu_count() >
+                len(psutil.sensors_temperatures()['coretemp']) - 1)
+
+        # get sibling per CPU core information
+        num_cpu = int(self.cpu_num / 2) if self.cpu_ht_enabled else self.cpu_num
+        for i in range(self.cpu_num):
+            self.cpu_sysfs_siblings.append(
+                f"/sys/devices/system/cpu/cpu{i}/topology/thread_siblings_list")
+        try:
+            sysfs_files = []
+            for cpu in self.cpu_sysfs_siblings:
+                cpu_sysfs = Path(cpu).resolve()
+                if cpu_sysfs.is_file():
+                    with open(cpu_sysfs, 'r') as sysfs:
+                        sysfs_files.append(sysfs)
+                        for line in sysfs:
+                            pair = line.strip('\n').split(',')
+                            if len(self.cpu_siblings) < num_cpu:
+                                self.cpu_siblings[int(pair[0])] = int(pair[1])
+                            else:
+                                self.cpu_siblings[int(pair[1])] = int(pair[0])
+            # create CPU temp sensort list
+            j = 0
+            once = True
+            for c in self.cpu_siblings:
+                if j > 5 and once:
+                    j = 0
+                    once = False
+                self.cpu_temp_sensors.append(j)
+                j += 1
+        except IOError as e:
+            print(f"Error sysfs CPU siblings {e}")
 
     def sanitise_thermal_modes(self, modes):
         """sanitise_thermal_modes.
@@ -309,8 +380,7 @@ class I8kGui(QMainWindow):
         dell_service_file = Path(
             '/etc/systemd/system/dell-bios-fan-control.service')
         if not dell_service_file.is_file():
-            print(
-                "Error systemctl dell-bios-fan-control.service not found")
+            print("Error systemctl dell-bios-fan-control.service not found")
             return False
 
         i8k_service_file = Path('/lib/systemd/system/i8kmon.service')
@@ -351,18 +421,83 @@ class I8kGui(QMainWindow):
         return len(active_services) == 2
 
     def check_prerequisites(self):
-        """check_thermal_prerequisites. Check for i8k and SMBIOS."""
+        """check_thermal_prerequisites. Check for sysfs, i8k and SMBIOS."""
+        # check sysfs
+        self.power_sysfs = "/sys/class/power_supply/AC/online"
+        self.scaling_sysfs = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+        self.tdp = "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
+        self.ht_sysfs = "/sys/devices/system/cpu/smt/active"
+        cpu_siblings_sysfs = "/sys/devices/system/cpu/cpu0/topology/thread_siblings_list"
+        sysfs_passed = bool(
+            (Path(self.power_sysfs).is_file()
+             and Path(self.scaling_sysfs).is_file()
+             and Path(self.tdp).is_file() and Path(self.ht_sysfs).is_file()
+             and Path(cpu_siblings_sysfs).is_file()))
+        # check cpu coretemp sysfs interface
+        try:
+            for cpu in range(self.num_phy_cores):
+                self.coretemps_sysfs.append(
+                    glob.glob(
+                        f"/sys/devices/platform/coretemp.0/hwmon/*/temp{cpu + 1}_input"
+                    )[0])
+            for t in self.coretemps_sysfs:
+                temp = Path(t).resolve()
+                if not temp.is_file():
+                    print(f"error file {t} is not available")
+        except IOError:
+            return False
+        # check cpu turbo sysfs interfaces
+        self.cpu_no_turbo = "/sys/devices/system/cpu/intel_pstate/no_turbo"
+        self.cpu_min_perf = "/sys/devices/system/cpu/intel_pstate/min_perf_pct"
+        self.cpu_max_perf = "/sys/devices/system/cpu/intel_pstate/max_perf_pct"
+        self.cpu_min_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq"
+        self.cpu_max_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq"
+        cpu_turbo_passed = bool(
+            (Path(self.cpu_no_turbo).is_file() and
+             Path(self.cpu_min_perf).is_file() and
+             Path(self.cpu_max_perf).is_file() and
+             Path(self.cpu_min_scaling).is_file() and
+             Path(self.cpu_max_scaling).is_file())
+        )
         # check for i8k
-        i8kmon_proc = Path("/proc/i8k").resolve()
+        self.i8kmon_ctl = shutil.which("i8kctl")
+        self.i8kmon_fan1 = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan1_input"
+        )[0]
+        self.i8kmon_fan2 = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan2_input"
+        )[0]
+        self.i8kmon_fan1_target = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan1_target"
+        )[0]
+        self.i8kmon_fan2_target = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan2_target"
+        )[0]
+        self.i8kmon_temp = glob.glob(
+            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/temp1_input"
+        )[0]
+        i8kmon_passed = bool(
+            (
+                Path(self.i8kmon_fan1).is_file()
+                and Path(self.i8kmon_fan2).is_file()
+                and Path(self.i8kmon_fan1_target).is_file()
+                and Path(self.i8kmon_fan2_target).is_file()
+                and Path(self.i8kmon_temp).is_file()
+            )
+        )
+        self.i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
         # check for smbios-thermal-ctl
-        smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
-        # if both exist return True
-        if i8kmon_proc.is_file() and smbois_ctl.is_file():
+        self.smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
+        # majority of the information is taken from the
+        # dell_smm_hwmon kernel module
+        if sysfs_passed and cpu_turbo_passed and i8kmon_passed and Path(str(
+                self.i8kmon_ctl)).is_file() and Path(
+                    self.smbois_ctl).is_file():
+            self.get_i8k_information()
             return True
         # else disable menu and return False
         self.thermal_control_menu.setTitle("Thermal Control N/A")
         self.thermal_menu_group.setDisabled(True)
-        self.alternative_cpu_temp = True
         return False
 
     def bios_thermal_control(self, op=None):
@@ -551,9 +686,6 @@ class I8kGui(QMainWindow):
 
     def build_thermal_menu(self):
         """build_thermal_menu."""
-        if not self.check_prerequisites():
-            return
-
         if self.thermal_menu_group.actions():
             return
 
@@ -577,36 +709,42 @@ class I8kGui(QMainWindow):
                 for key, value in self.i8k_info.items():
                     if key.startswith('Fan Mode'):
                         mode = key.split('Fan Mode ')
-                        if int(mode[1]) == self.left_fan_mode:
+                        if int(mode[1]) == self.left_fan_mode_map[self.left_fan_mode]:
+                            high = "High Trigger: ".rjust(10)
                             if self.ac_power_supply_on:
-                                title = (
-                                    f"{key}: Low: {value[0]}{self.degree_sign}C  "
-                                    f"High: {value[1]}{self.degree_sign}C")
+                                low_data = f"{value[0]}{self.degree_sign}C\n".rjust(25)
+                                high_data = f"{value[1]}{self.degree_sign}C".rjust(23)
                             else:
-                                title = (
-                                    f"{key}: Low: {value[2]}{self.degree_sign}C  "
-                                    f"High: {value[3]}{self.degree_sign}C")
+                                low_data = f"{value[2]}{self.degree_sign}C\n".rjust(25)
+                                high_data = f"{value[3]}{self.degree_sign}C".rjust(23)
+                            low = "Low Trigger: ".rjust(9)
+                            title = (f"{key}\n{low}{low_data}{high}{high_data}")
                             self.fan_mode_menu_item.setText(title)
                             self.thermal_control_menu.addAction(
                                 self.fan_mode_menu_item)
                             self.thermal_menu_group.addAction(
                                 self.fan_mode_menu_item)
                     elif key.startswith('Left Speed'):
-                        title = f"Max {key}: {value[self.left_fan_mode]}"
+                        data = f"{value[value.index(str(self.left_fan_mode))]}".rjust(
+                            15)
+                        title = f"Max {key}: "
                         self.left_fan_thermal_menu_item.setText(title)
                         self.thermal_control_menu.addAction(
                             self.left_fan_thermal_menu_item)
                         self.thermal_menu_group.addAction(
                             self.left_fan_thermal_menu_item)
                     elif key.startswith('Right Speed'):
-                        title = f"Max {key}: {value[self.right_fan_mode]}"
+                        data = f"{value[value.index(str(self.right_fan_mode))]}".rjust(
+                            15)
+                        title = f"Max {key}: "
                         self.right_fan_thermal_menu_item.setText(title)
                         self.thermal_control_menu.addAction(
                             self.right_fan_thermal_menu_item)
                         self.thermal_menu_group.addAction(
                             self.right_fan_thermal_menu_item)
                     else:
-                        title = f"{key}: {value}{self.degree_sign}C"
+                        data = f"{value}{self.degree_sign}C".rjust(16)
+                        title = f"{key}: {data}"
                         thermal_menu_item = QAction(title)
                         thermal_menu_item.setCheckable(False)
                         self.thermal_control_menu.addAction(thermal_menu_item)
@@ -625,15 +763,17 @@ class I8kGui(QMainWindow):
             c_action.setCheckable(False)
             self.cpu_details.addAction(c_action)
             self.cpu_freq_list.append(c_action)
+        # build menu for CPU turbo boost stats
+        self.cpu_turbo.addAction(self.cpu_turbo_enabled)
+        self.cpu_turbo.addAction(self.min_cpu_freq)
+        self.cpu_turbo.addAction(self.max_cpu_freq)
+        self.cpu_turbo.addAction(self.min_cpu_turbo)
+        self.cpu_turbo.addAction(self.max_cpu_turbo)
 
     def get_cpu_tdp(self):
         """get_cpu_tdp."""
-        tdp = Path(
-            "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
-        ).resolve()
-        if tdp.is_file():
-            with tdp.open('r') as f:
-                self.cpu_tdp.setText(f"{int(f.read().strip()) // 1000000} W")
+        with open(self.tdp, 'r') as f:
+            self.cpu_tdp.setText(f"{int(f.read().strip()) // 1000000} W")
         return self.cpu_tdp
 
     def get_i8k_information(self):
@@ -644,9 +784,7 @@ class I8kGui(QMainWindow):
         info = {}
         i8k_config = None
         try:
-            i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
-            if i8kmon_conf.is_file():
-                i8k_config = open(i8kmon_conf, 'r')
+            i8k_config = open(self.i8kmon_conf, 'r')
         except IOError as e:
             self.critical_error = True
             if self.tray:
@@ -686,6 +824,13 @@ class I8kGui(QMainWindow):
                             "set status(rightspeed)")[1].strip().strip('"')
                         info['Right Speed'] = list(conf.split())
                 i8k_config.close()
+        # set status(leftspeed/rightspeed) must be set in i8kmon.conf
+        if 'Left Speed' in info:
+            for i in range(len(info['Left Speed'])):
+                self.left_fan_mode_map[int(info['Left Speed'][i])] = i
+        if 'Right Speed' in info:
+            for i in range(len(info['Right Speed'])):
+                self.right_fan_mode_map[int(info['Right Speed'][i])] = i
         return info
 
     def get_smbios_information(self):
@@ -848,10 +993,16 @@ class I8kGui(QMainWindow):
 
     def load_sys_tray(self):
         """load_sys_tray."""
+        # build desktop system tray
         self.tray = QSystemTrayIcon(self)
         if self.tray.isSystemTrayAvailable():
-            icon = QIcon(
-                f'{str(Path.home())}/.local/share/icons/i8kgui_icon.png')
+            # check system then user icon locations
+            icon_file = Path("/usr/share/icons/i8kgui_icon.png").resolve()
+            if not icon_file.is_file():
+                icon_file = Path(f'{str(Path.home())}/.local/share/icons/i8kgui_icon.png').resolve()
+                if not icon_file.is_file():
+                    pass
+            icon = QIcon(str(icon_file))
             if icon.pixmap(QSize(64, 64)).isNull():
                 icon = QIcon('icons/i8kgui_icon.png')
             self.tray.setIcon(icon)
@@ -862,11 +1013,13 @@ class I8kGui(QMainWindow):
             self.tray_menu.aboutToHide.connect(self.stop_monitor)
             # setup display
             self.tray_menu.addAction(self.cpu_usage)
+            self.tray_menu.addAction(self.cpu_temp)
             self.tray_menu.addAction(self.cpu_mhz)
             self.tray_menu.addAction(self.cpu_governor)
             self.connect_cpupower()
-            self.tray_menu.addAction(self.cpu_temp)
             self.tray_menu.addMenu(self.cpu_details)
+            self.tray_menu.addMenu(self.cpu_turbo)
+            self.tray_menu.addSeparator()
             self.tray_menu.addAction(self.left_fan_rpm)
             self.tray_menu.addAction(self.right_fan_rpm)
             self.tray_menu.addAction(self.left_fan_status)
@@ -960,57 +1113,72 @@ class I8kGui(QMainWindow):
 
     def read_i8kmon_info(self):
         """read_i8kmon_info."""
-        i8k_proc = None
-        try:
-            i8kmon_proc = Path("/proc/i8k").resolve()
-            if i8kmon_proc.is_file():
-                i8k_proc = open(i8kmon_proc, 'r')
-        except IOError as e:
-            self.critical_error = True
-            if self.tray:
-                self.tray.showMessage("i8kgui",
-                                      f"Error cannot find i8k module. "
-                                      f"Please install/start i8kutils.\n\n{e}",
-                                      icon=QSystemTrayIcon.Critical,
-                                      msecs=10000)
-        else:
-            if i8k_proc:
-                line = i8k_proc.readline()  # output is only a single line.
-                i8k_proc.close()
-                split_line = line.split(' ')
-                self.cpu_temp.setText(f"CPU Temp:                "
-                                      f"{split_line[3].strip()}"
-                                      f"{self.degree_sign}C")
-                self.left_fan_rpm.setText(
-                    f"Left Fan RPM:          {split_line[6].strip()}")
-                self.right_fan_rpm.setText(
-                    f"Right Fan RPM:       {split_line[7].strip()}")
-                self.left_fan_status.setText(
-                    f"Left Fan Mode:       {split_line[4].strip()}")
-                self.right_fan_status.setText(
-                    f"Right Fan Mode:    {split_line[5].strip()}")
-                if self.left_fan_mode != int(
-                        split_line[4].strip()) or self.right_fan_mode != int(
-                            split_line[5].strip()):
-                    self.left_fan_mode = int(split_line[4].strip())
-                    self.right_fan_mode = int(split_line[5].strip())
-                    self.update_i8k_thermal()
-                self.update_i8k_ac_power()
-
-                self.i8k_format_version.setText(split_line[0].strip())
-                self.bios_version.setText(split_line[1].strip())
-                self.service_tag.setText(split_line[2].strip())
-                self.power_status.setText(split_line[8].strip())
-                self.button_status.setText(split_line[9].strip())
-            elif self.alternative_cpu_temp:
-                self.left_fan_rpm.setText(
-                    f"Left Fan RPM:          {psutil.sensors_fans()['dell_smm'][0][1]}")
-                self.right_fan_rpm.setText(
-                    f"Right Fan RPM:       {psutil.sensors_fans()['dell_smm'][1][1]}")
-                self.left_fan_status.setText(
-                    "Left Fan Mode:       N/A")
-                self.right_fan_status.setText(
-                    "Right Fan Mode:    N/A")
+        with open(self.i8kmon_fan1) as fan1, \
+                open(self.i8kmon_fan2) as fan2, \
+                open(self.i8kmon_fan1_target) as fan1_target, \
+                open(self.i8kmon_fan2_target) as fan2_target, \
+                open(self.i8kmon_temp) as temp, \
+                open(self.cpu_no_turbo) as no_turbo, \
+                open(self.cpu_min_perf) as min_perf, \
+                open(self.cpu_max_perf) as max_perf, \
+                open(self.cpu_min_scaling) as min_scaling, \
+                open(self.cpu_max_scaling) as max_scaling:
+            # format inputs
+            i8kmon_fan1 = fan1.readline().strip('\n')
+            i8kmon_fan2 = fan2.readline().strip('\n')
+            i8kmon_fan1_target = fan1_target.readline().strip('\n')
+            i8kmon_fan2_target = fan2_target.readline().strip('\n')
+            i8kmon_temp = temp.readline().strip('\n')
+            cpu_no_turbo = no_turbo.readline().strip('\n')
+            cpu_min_perf = min_perf.readline().strip('\n')
+            cpu_max_perf = max_perf.readline().strip('\n')
+            cpu_min_scaling = min_scaling.readline().strip('\n')
+            cpu_max_scaling = max_scaling.readline().strip('\n')
+            # cpu temp
+            c_temp = f"{float(i8kmon_temp.strip()) / 1000}{self.degree_sign}C".rjust(20)
+            self.cpu_temp.setText(f"CPU Temp:\t{c_temp}")
+            # left fan speed
+            l_fan = f"{i8kmon_fan1.strip()}  RPM".rjust(22)
+            self.left_fan_rpm.setText(f"Left Fan:\t{l_fan}")
+            # right fan speed
+            r_fan = f"{i8kmon_fan2.strip()}  RPM".rjust(22)
+            self.right_fan_rpm.setText(f"Right Fan:\t{r_fan}")
+            # left fan mode
+            left_mode = f"{self.left_fan_mode_map[int(i8kmon_fan1_target.strip())]}".rjust(
+                15)
+            self.left_fan_status.setText(f"Left Fan Mode:{left_mode}")
+            # right fan mode
+            right_mode = f"{self.right_fan_mode_map[int(i8kmon_fan2_target.strip())]}".rjust(
+                13)
+            self.right_fan_status.setText(f"Right Fan Mode:{right_mode}")
+            # cpu turbo
+            if int(cpu_no_turbo.strip()) == 0:
+                t_status = 'Enabled'
+            else:
+                t_status = 'Disabled'
+            self.cpu_turbo_enabled.setText(f"CPU Turbo Boost:\t{t_status}")
+            c_min_freq = int(cpu_min_scaling.strip()) / 1000
+            c_min_freq = f"{c_min_freq:.0f} MHz".rjust(17)
+            self.min_cpu_freq.setText(f"CPU Min. Freq:\t{c_min_freq}")
+            c_max_freq = int(cpu_max_scaling.strip()) / 1000
+            c_max_freq = f"{c_max_freq:.0f} MHz".rjust(17)
+            self.max_cpu_freq.setText(f"CPU Max. Freq:\t{c_max_freq}")
+            c_min_turbo = cpu_min_perf.strip()
+            c_min_turbo = f"{c_min_turbo} %"
+            self.min_cpu_turbo.setText(f"CPU Min. Turbo:\t{c_min_turbo}")
+            c_max_turbo = cpu_max_perf.strip()
+            c_max_turbo = f"{c_max_turbo} %"
+            self.max_cpu_turbo.setText(f"CPU Max. Turbo:\t{c_max_turbo}")
+            # update fan modes
+            if self.left_fan_mode != int(
+                    i8kmon_fan1_target.strip()) or self.right_fan_mode != int(
+                        i8kmon_fan2_target.strip()):
+                self.left_fan_mode = int(i8kmon_fan1_target.strip())
+                self.right_fan_mode = int(i8kmon_fan2_target.strip())
+                self.update_i8k_thermal()
+            # update power status
+            self.update_i8k_ac_power()
+            self.power_status.setText(str(self.ac_power_supply_on))
 
     def read_cpu_info(self):
         """read_cpu_info."""
@@ -1019,13 +1187,16 @@ class I8kGui(QMainWindow):
             cpu_procs = []
             all_mhz = []
             for cpu in self.cpu_curr_freqs:
-                cpu_proc = Path(cpu).resolve()
-                if cpu_proc.is_file():
-                    proc = open(cpu_proc, 'r')
+                with open(cpu, 'r') as proc:
                     cpu_procs.append(proc)
-                    for line in proc:
-                        mhz = int(line.strip('\n')) // 1000
+                    for temp in proc:
+                        mhz = int(temp.strip('\n')) // 1000
                         all_mhz.append(mhz)
+            coretemps = []
+            for coretemp in self.coretemps_sysfs:
+                with open(coretemp, 'r') as cpu_temps:
+                    coretemps.extend(
+                        float(temp.strip('\n')) / 1000 for temp in cpu_temps)
         except IOError as e:
             self.critical_error = True
             if self.tray:
@@ -1033,79 +1204,62 @@ class I8kGui(QMainWindow):
                     "i8kgui",
                     f"Error cannot find /proc/cpuinfo.\n\n{e}",
                     icon=QSystemTrayIcon.Critical,
-                    msecs=10000)
+                    msecs=10000,
+                )
         else:
             usage = psutil.cpu_percent(interval=0.0, percpu=False)
             usage_per = psutil.cpu_percent(interval=0.0, percpu=True)
-            self.cpu_usage.setText(f"CPU Usage:              {usage:4.1f} %")
+            c_use = f"{usage} %".rjust(20)
+            self.cpu_usage.setText(f"CPU Usage:\t{c_use}")
             if self.use_cpu_ave_freq:
                 total_mhz = sum(all_mhz)
                 mhz = total_mhz // len(all_mhz)
             else:
                 all_mhz.sort()
                 mhz = all_mhz[-1]
-            self.cpu_mhz.setText(
-                f"CPU Freq:                  {mhz} MHz")
+            c_mhz = f"{mhz} MHz".rjust(20)
+            self.cpu_mhz.setText(f"CPU Freq:\t{c_mhz}")
             for i, c in enumerate(self.cpu_freq_list):
-                c.setText(f"CPU {i}:\t{usage_per[i]:4.1f} %\t{all_mhz[i]:4.0f} MHz\t"
-                          f"{psutil.sensors_temperatures()['coretemp'][i+1][1]:3.1f}"
-                          f"{self.degree_sign}C")
-            for cpu in cpu_procs:
-                cpu.close()
-            if self.alternative_cpu_temp:
-                self.cpu_temp.setText(f"CPU Temp:                "
-                                      f"{psutil.sensors_temperatures()['coretemp'][0][1]}"
-                                      f"{self.degree_sign}C")
+                j = self.cpu_temp_sensors[i]
+                # CPU number - 7 chars "CPU 01:"
+                _num = str("{:02d}".format(i))
+                cpu_text = f"CPU {_num}:"
+                # CPU usage - 7 chars "100.0 %"
+                usage = str(usage_per[i]).center(5)
+                usage_text = f"{usage} %"
+                # CPU MHz - 8 chars "4000 MHz"
+                mhz_text = f"{all_mhz[i]:04d} MHz"
+                # CPU core Temp - 7 chars "100 C"
+                temp = str("{:2.0f}".format(coretemps[j])).rjust(4)
+                temp_text = f"{temp}{self.degree_sign}C"
+                # Output "CPU 01: 100.0 % 4000 MHz 80 C" - total 29 chars
+                per_cpu_text = cpu_text.rjust(7) + usage_text.center(
+                    10) + mhz_text.center(9) + temp_text.ljust(7)
+                c.setText(f"{per_cpu_text}".center(36))
 
     def read_cpu_gov_info(self):
-        """read_cpu_gov_info."""
-        # gather current CPU governor
-        gov_sys = None
+        """read_cpu_gov_info. Gather current CPU governor"""
         try:
-            scaling_sysfs = Path(
-                "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
-            ).resolve()
-            if scaling_sysfs.is_file:
-                gov_sys = open(scaling_sysfs, 'r')
+            with open(self.scaling_sysfs, 'r') as gov_sys:
+                gov = gov_sys.readline().strip()
+                c_gov = f"{gov.capitalize()}".rjust(15)
+                self.cpu_governor.setText(f"CPU Governor: {c_gov}")
         except IOError as e:
             self.critical_error = True
             if self.tray:
                 self.tray.showMessage(
-                    "i8kgui",
-                    f"Error cannot find "
+                    "i8kgui", f"Error cannot find "
                     f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
                     f"\n\n{e}",
                     icon=QSystemTrayIcon.Critical,
                     msecs=10000)
-        else:
-            if gov_sys:
-                gov = gov_sys.readline().strip()
-                gov_sys.close()
-                self.cpu_governor.setText(
-                    f"CPU Governor:        {gov.capitalize()}")
 
     def read_power_supply_status(self):
         """read_power_supply_status."""
         # gather power supply status
-        pwr_sys = None
-        try:
-            power_sysfs = Path("/sys/class/power_supply/AC/online").resolve()
-            if power_sysfs.is_file():
-                pwr_sys = open(power_sysfs, 'r')
-        except IOError as e:
-            self.critical_error = True
-            if self.tray:
-                self.tray.showMessage(
-                    "i8kgui",
-                    f"Error cannot find /sys/class/power_supply/AC/online."
-                    f"\n\n{e}",
-                    icon=QSystemTrayIcon.Critical,
-                    msecs=10000)
-        else:
-            if pwr_sys:
-                pwr_ac = pwr_sys.readline().strip()
-                pwr_sys.close()
-                self.ac_power_supply_on = int(pwr_ac) == 1
+        with open(self.power_sysfs, 'r') as pwr_sys:
+            pwr_ac = pwr_sys.readline().strip()
+            self.ac_power_supply_on = int(pwr_ac) == 1
 
     def read_proc(self):
         """read_proc."""
@@ -1131,15 +1285,16 @@ class I8kGui(QMainWindow):
         for key, value in self.i8k_info.items():
             if key.startswith('Fan Mode'):
                 mode = key.split('Fan Mode ')
-                if int(mode[1]) == self.left_fan_mode:
+                if int(mode[1]) == self.left_fan_mode_map[self.left_fan_mode]:
+                    high = "High Trigger: ".rjust(10)
                     if self.ac_power_supply_on:
-                        title = (f"{key}: Low: "
-                                 f"{value[0]}{self.degree_sign}C  "
-                                 f"High: {value[1]}{self.degree_sign}C")
+                        low_data = f"{value[0]}{self.degree_sign}C\n".rjust(25)
+                        high_data = f"{value[1]}{self.degree_sign}C".rjust(23)
                     else:
-                        title = (f"{key}: Low: "
-                                 f"{value[2]}{self.degree_sign}C  "
-                                 f"High: {value[3]}{self.degree_sign}C")
+                        low_data = f"{value[2]}{self.degree_sign}C\n".rjust(25)
+                        high_data = f"{value[3]}{self.degree_sign}C".rjust(23)
+                    low = "Low Trigger: ".rjust(9)
+                    title = (f"{key}\n{low}{low_data}{high}{high_data}")
                     self.fan_mode_menu_item.setText(title)
                     break
 
@@ -1152,22 +1307,29 @@ class I8kGui(QMainWindow):
             for key, value in self.i8k_info.items():
                 if key.startswith('Fan Mode'):
                     mode = key.split('Fan Mode ')
-                    if int(mode[1]) == self.left_fan_mode:
+                    if int(mode[1]) == self.left_fan_mode_map[self.left_fan_mode]:
+                        high = "High Trigger: ".rjust(10)
                         if self.ac_power_supply_on:
-                            title = (f"{key}: Low: "
-                                     f"{value[0]}{self.degree_sign}C  "
-                                     f"High: {value[1]}{self.degree_sign}C")
+                            low_data = f"{value[0]}{self.degree_sign}C\n".rjust(25)
+                            high_data = f"{value[1]}{self.degree_sign}C".rjust(23)
                         else:
-                            title = (f"{key}: Low: "
-                                     f"{value[2]}{self.degree_sign}C  "
-                                     f"High: {value[3]}{self.degree_sign}C")
+                            low_data = f"{value[2]}{self.degree_sign}C\n".rjust(25)
+                            high_data = f"{value[3]}{self.degree_sign}C".rjust(23)
+                        low = "Low Trigger: ".rjust(9)
+                        title = (f"{key}:\n{low}{low_data}{high}{high_data}")
                         self.fan_mode_menu_item.setText(title)
                 elif key.startswith('Left Speed'):
-                    title = f"Max {key}: {value[self.left_fan_mode]}"
-                    self.left_fan_thermal_menu_item.setText(title)
+                    left_speed = f"{value[value.index(str(self.left_fan_mode))]}".rjust(
+                        15)
+                    title = f"Max {key}: "
+                    self.left_fan_thermal_menu_item.setText(
+                        f"{title}{left_speed}")
                 elif key.startswith('Right Speed'):
-                    title = f"Max {key}: {value[self.right_fan_mode]}"
-                    self.right_fan_thermal_menu_item.setText(title)
+                    right_speed = f"{value[value.index(str(self.right_fan_mode))]}".rjust(
+                        12)
+                    title = f"Max {key}: "
+                    self.right_fan_thermal_menu_item.setText(
+                        f"{title}{right_speed}")
 
     def status(self, reason):
         """status.
@@ -1207,6 +1369,14 @@ class I8kGui(QMainWindow):
 
     def show_info(self):
         """show_info."""
+        with os.popen(self.i8kmon_ctl) as ctl:
+            line = ctl.readline().strip('\n').strip()
+            split_line = line.split(" ")
+            self.i8k_format_version.setText(split_line[0].strip())
+            self.bios_version.setText(split_line[1].strip())
+            self.service_tag.setText(split_line[2].strip())
+            self.button_status.setText(split_line[9].strip())
+
         if not self.info_dialog.isVisible():
             self.info_dialog.show()
         self.info_dialog.raise_()
@@ -1217,7 +1387,7 @@ if __name__ == '__main__':
     app = QApplication([])
     app.setOrganizationName("i8kgui")
     app.setApplicationName("i8kgui")
-    app.setApplicationVersion("0.8.1")
+    app.setApplicationVersion("0.8.2")
     # setup Dark Mode QPalette - initial setup
     palette = QPalette()
     palette.setColor(QPalette.Window, QColor(53, 53, 53))
