@@ -555,12 +555,13 @@ class I8kGui(QMainWindow):
                                     self.k10_cpu_temp = temp
                                     print(f"Found AMD k10temp Tctl {temp}")
                 # There are no individual CPU core temps for k10temp
-                print(self.k10_cpu_temp)
                 if self.k10_cpu_temp:
                     self.k10_cpu_temp = self.k10_cpu_temp.replace("label", "input")
+                    print(f"Found: AMD k10temp input {self.k10_cpu_temp}")
                     # loop for available cores
                     for _ in range(self.cpu_num):
                         self.coretemps_sysfs.append(self.k10_cpu_temp)
+                    print(f"Found: {len(self.coretemps_sysfs)} Sysfs AMD coretemps")
                 else:
                     print("Error: Sysfs AMD coretemps are not available")
                     use_hwmon_temp = True
@@ -608,6 +609,7 @@ class I8kGui(QMainWindow):
                 print("Found: Sysfs CPU min perf")
             else:
                 print("Error: Sysfs CPU min perf not found")
+                self.cpu_min_perf = self.ERR_PATH
 
             # values between acpi_cppc and amd_pstate differ for highest perf
             # sample output shows cpu0 and policy0 to be equal, but the rest differ
@@ -620,7 +622,8 @@ class I8kGui(QMainWindow):
                 if Path(self.cpu_max_perf).is_file():
                     print("Found: Sysfs CPU max perf using alternative")
                 else:
-                    print("Error: Sysfs CPU max perf not found")
+                    print("Error: Sysfs CPU max perf alternative not found")
+                    self.cpu_min_perf = self.ERR_PATH
 
             self.cpu_min_scaling = "/sys/devices/system/cpu/cpufreq/policy0/amd_pstate_lowest_nonlinear_freq"
             if Path(self.cpu_min_scaling).is_file():
@@ -630,7 +633,7 @@ class I8kGui(QMainWindow):
                 if Path(self.cpu_min_scaling).is_file():
                     print("Found: Sysfs CPU min scaling using alternative")
                 else:
-                    print("Error: Sysfs CPU min scaling not found")
+                    print("Error: Sysfs CPU min scaling alternative not found")
 
             self.cpu_max_scaling = "/sys/devices/system/cpu/cpufreq/policy0/amd_pstate_max_freq"
             if Path(self.cpu_max_scaling).is_file():
@@ -712,11 +715,17 @@ class I8kGui(QMainWindow):
                 # TODO - if not found use i8kctl if available
 
         # check for i8kmon.conf
-        self.i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
-        if self.i8kmon_conf.is_file():
-            print(f"Found: i8kmon.conf {self.i8kmon_conf}")
+        # i8kutils checks for /etc/i8kmon.conf and then
+        # ~/.i8kmon. Added additional /etc/i8kutils/i8kmon.conf
+        config_file_list = ['/etc/i8kmon.conf', '/etc/i8kutils/i8kmon.conf',
+                            f'{str(Path.home())}/.i8kmon']
+        for config in config_file_list:
+            if Path(config).resolve().is_file():
+                self.i8kmon_conf = config
+        if self.i8kmon_conf:
+            print(f"Found: i8kmon config file {self.i8kmon_conf}")
         else:
-            print("Error: i8kmon.conf not found")
+            print("Error: i8kmon config file not found")
 
         # check for smbios-thermal-ctl
         self.smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
@@ -1046,7 +1055,7 @@ class I8kGui(QMainWindow):
             self.critical_error = True
             if self.tray:
                 self.tray.showMessage("i8kgui",
-                                      f"Error cannot find /etc/i8kmon.conf. "
+                                      f"Error cannot find i8kmon config file. "
                                       f"Please check your config file \n\n{e}",
                                       icon=QSystemTrayIcon.Critical,
                                       msecs=10000)
@@ -1400,12 +1409,20 @@ class I8kGui(QMainWindow):
             r_fan = f"{i8kmon_fan2.strip()}  RPM".rjust(22)
             self.right_fan_rpm.setText(f"Right Fan:\t{r_fan}")
             # left fan mode
-            left_mode = f"{self.left_fan_mode_map[int(i8kmon_fan1_target.strip())]}".rjust(
-                15)
+            l_mode = int(i8kmon_fan1_target.strip())
+            if l_mode in self.left_fan_mode_map:
+                left_mode = f"{self.left_fan_mode_map[l_mode]}".rjust(
+                    15)
+            else:
+                left_mode = "N/A".rjust(15)
             self.left_fan_status.setText(f"Left Fan Mode:{left_mode}")
             # right fan mode
-            right_mode = f"{self.right_fan_mode_map[int(i8kmon_fan2_target.strip())]}".rjust(
-                13)
+            r_mode = int(i8kmon_fan2_target.strip())
+            if r_mode in self.right_fan_mode_map:
+                right_mode = f"{self.right_fan_mode_map[r_mode]}".rjust(
+                    13)
+            else:
+                right_mode = "N/A".rjust(13)
             self.right_fan_status.setText(f"Right Fan Mode:{right_mode}")
             # cpu turbo
             if self.is_intel_cpu and no_turbo:
