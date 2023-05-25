@@ -44,6 +44,8 @@ class I8kGui(QMainWindow):
         super(I8kGui, self).__init__()
         self.settings = QSettings()
         self.critical_error = False
+        self.left_fan_mode = 0
+        self.right_fan_mode = 0
         self.left_fan_mode_map = {}
         self.right_fan_mode_map = {}
         self.ac_power_supply_on = None
@@ -96,8 +98,6 @@ class I8kGui(QMainWindow):
         self.left_fan_thermal_menu_item.setCheckable(False)
         self.right_fan_thermal_menu_item = QAction("")
         self.right_fan_thermal_menu_item.setCheckable(False)
-        self.left_fan_mode = 0
-        self.right_fan_mode = 0
         self.i8k_info = {}
         self.load_settings()
         self.monitorTimer = QTimer(self)
@@ -974,7 +974,10 @@ class I8kGui(QMainWindow):
                 for key, value in self.i8k_info.items():
                     if key.startswith('Fan Mode'):
                         mode = key.split('Fan Mode ')
-                        if int(mode[1]) == self.left_fan_mode_map[self.left_fan_mode]:
+                        if ((self.left_fan_mode in self.left_fan_mode_map) and
+                                (int(mode[1]) == self.left_fan_mode_map[self.left_fan_mode]) or
+                                (self.right_fan_mode in self.right_fan_mode_map) and
+                                (int(mode[1]) == self.right_fan_mode_map[self.right_fan_mode])):
                             high = "High Trigger: ".rjust(10)
                             if self.ac_power_supply_on:
                                 low_data = f"{value[0]}{self.degree_sign}C\n".rjust(25)
