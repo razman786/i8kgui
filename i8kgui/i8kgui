@@ -15,6 +15,7 @@
 # this program. If not, see <https://www.gnu.org/licenses/>.
 #
 from pathlib import Path
+from contextlib import contextmanager
 import os
 import glob
 import shutil
@@ -30,11 +31,13 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFormLayout,
 import cpuinfo
 import psutil
 
+from contextlib import suppress
 warnings.filterwarnings("ignore")
 
 
 class I8kGui(QMainWindow):
     """I8kGui."""
+    ERR_PATH = "/some/where/0"
 
     def __init__(self):
         """__init__."""
@@ -50,6 +53,8 @@ class I8kGui(QMainWindow):
         self.ht_sysfs = None
         self.num_phy_cores = psutil.cpu_count(logical=False)
         self.coretemps_sysfs = []
+        self.is_intel_cpu = True
+        self.cpu_num = psutil.cpu_count()
         # check dependencies
         self.check_prerequisites()
         self.degree_sign = u'\N{DEGREE SIGN}'
@@ -103,7 +108,6 @@ class I8kGui(QMainWindow):
         self.tray = None
         self.first_load = True
         self.cpu_temp_sensors = []
-        self.cpu_num = psutil.cpu_count()
         self.cpu_sysfs_siblings = []
         self.cpu_siblings = {}
         self.detect_cpu()
@@ -165,11 +169,20 @@ class I8kGui(QMainWindow):
                 for line in ht_sys:
                     self.cpu_ht_enabled = int(line.strip('\n'))
         except IOError:
+            print("Error: detecting CPU HT enabled, using alternative")
             # if HT status not available, assume HT enabled if coretemps are
             # less than CPU count
-            self.cpu_ht_enabled = (
-                psutil.cpu_count() >
-                len(psutil.sensors_temperatures()['coretemp']) - 1)
+            try:
+                if self.is_intel_cpu:
+                    self.cpu_ht_enabled = (
+                        psutil.cpu_count() >
+                        len(psutil.sensors_temperatures()['coretemp']) - 1)
+                else:
+                    self.cpu_ht_enabled = (
+                        psutil.cpu_count() >
+                        len(psutil.sensors_temperatures()['k10temp']) - 1)
+            except Exception:
+                self.cpu_ht_enabled = False
 
         # get sibling per CPU core information
         num_cpu = int(self.cpu_num / 2) if self.cpu_ht_enabled else self.cpu_num
@@ -184,15 +197,20 @@ class I8kGui(QMainWindow):
                     with open(cpu_sysfs, 'r') as sysfs:
                         sysfs_files.append(sysfs)
                         for line in sysfs:
-                            pair = line.strip('\n').split(',')
+                            if ',' in line:
+                                pair = line.strip('\n').split(',')
+                            elif '-' in line:
+                                pair = line.strip('\n').split('-')
+                            else:
+                                print("Error: parsing CPU thread_siblings_list")
                             if len(self.cpu_siblings) < num_cpu:
                                 self.cpu_siblings[int(pair[0])] = int(pair[1])
                             else:
                                 self.cpu_siblings[int(pair[1])] = int(pair[0])
-            # create CPU temp sensort list
+            # create CPU temp sensor list
             j = 0
             once = True
-            for c in self.cpu_siblings:
+            for _ in self.cpu_siblings:
                 if j > 5 and once:
                     j = 0
                     once = False
@@ -245,9 +263,7 @@ class I8kGui(QMainWindow):
             self.use_cpu_ave_freq = False
             self.cpu_ave_freq_checkbox.setCheckState(Qt.Unchecked)
 
-        # load smbios information from config
-        info = list(self.settings.value('smbios', []))
-        if info:
+        if info := list(self.settings.value('smbios', [])):
             # reconstruct list back into dict preserving order
             self.smbios_info = {
                 info[i][0]: info[i][1]
@@ -422,77 +438,317 @@ class I8kGui(QMainWindow):
 
     def check_prerequisites(self):
         """check_thermal_prerequisites. Check for sysfs, i8k and SMBIOS."""
+        # detect if AMD or Intel CPU
+        cpu_vendor = cpuinfo.get_cpu_info()['vendor_id_raw']
+        if cpu_vendor == "GenuineIntel":
+            print("Found: Intel CPU")
+        elif cpu_vendor == "AuthenticAMD":
+            print("Found: AMD CPU")
+            self.is_intel_cpu = False
+        else:
+            print(f"Error: CPU vendor not supported {cpu_vendor}")
+
         # check sysfs
+        # check power
         self.power_sysfs = "/sys/class/power_supply/AC/online"
+        if Path(self.power_sysfs).is_file():
+            self.power_enabled = True
+            print("Found: Sysfs AC power")
+        else:
+            self.power_enabled = False
+            print("Error: Sysfs AC power not found")
+
+        # check scaling governor
         self.scaling_sysfs = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+        if Path(self.scaling_sysfs).is_file():
+            self.scaling_enabled = True
+            print("Found: Sysfs scaling governor")
+        else:
+            self.scaling_enabled = False
+            print("Error: Sysfs scaling governor not found")
+
+        # check RAPL TDP
         self.tdp = "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
+        if Path(self.tdp).is_file():
+            self.tdp_enabled = True
+            print("Found: Sysfs RAPL TDP")
+        else:
+            self.tdp_enabled = False
+            print("Error: Sysfs RAPL TDP not found")
+
+        # check SMT
         self.ht_sysfs = "/sys/devices/system/cpu/smt/active"
+        if Path(self.ht_sysfs).is_file():
+            print("Found: Sysfs SMT active")
+        else:
+            print("Error: Sysfs SMT not active")
+
+        # check CPU siblings
         cpu_siblings_sysfs = "/sys/devices/system/cpu/cpu0/topology/thread_siblings_list"
+        if Path(cpu_siblings_sysfs).is_file():
+            print("Found: Sysfs CPU siblings")
+        else:
+            print("Error: Sysfs CPU siblings not found")
+
+        # check cpu coretemp or k10temp sysfs interface
+        use_hwmon_temp = False
+        if self.is_intel_cpu:
+            with suppress(Exception):
+                print("Found Intel sensors:")
+                for temp in psutil.sensors_temperatures()['coretemp']:
+                    print(f"Sensor: {temp}")
+            try:
+                for cpu in range(self.num_phy_cores):
+                    self.coretemps_sysfs.append(
+                        glob.glob(
+                            f"/sys/devices/platform/coretemp.0/hwmon/*/temp{cpu + 1}_input"
+                        )[0])
+                num_temps = len(self.coretemps_sysfs)
+                if num_temps >= 1:
+                    print(f"Found: {num_temps} Sysfs Intel coretemps")
+                    for t in self.coretemps_sysfs:
+                        temp = Path(t).resolve()
+                        if not temp.is_file():
+                            print(f"Error: Sysfs Intel coretemp {t} is not available")
+                else:
+                    print("Error: Sysfs Intel coretemps not found")
+                    use_hwmon_temp = True
+            except IOError:
+                print("Error: Sysfs Intel coretemps are not available")
+                use_hwmon_temp = True
+        else:
+            with suppress(Exception):
+                print("Found AMD sensors:")
+                for temp in psutil.sensors_temperatures()['k10temp']:
+                    print(f"Sensor: {temp}")
+            # search hwmon for k10temp
+            self.k10_hwmon = None
+            try:
+                hwmon_list = glob.glob("/sys/class/hwmon/hwmon*/name")
+            except Exception:
+                print("Error: Sysfs hwmon traversal")
+            else:
+                for hwmon in hwmon_list:
+                    with open(hwmon, 'r') as mon:
+                        for line in mon:
+                            val = line.strip('\n')
+                            if val == 'k10temp':
+                                self.k10_hwmon = os.path.dirname(hwmon)
+                                print(f"Found AMD k10temp {self.k10_hwmon}")
+            # look for Tdie or Tctl in k10temp
+            # https://www.kernel.org/doc/html/latest/hwmon/k10temp.html
+            if self.k10_hwmon:
+                self.k10_cpu_temp = None
+                try:
+                    k10_mons = glob.glob(f"{self.k10_hwmon}/temp*_label")
+                except Exception:
+                    print("Error: Sysfs hwmon k10temp")
+                else:
+                    for temp in k10_mons:
+                        with open(temp, 'r') as mon:
+                            for line in mon:
+                                val = line.strip('\n')
+                                if val == 'Tdie':
+                                    self.k10_cpu_temp = temp
+                                    print(f"Found AMD k10temp Tdie {temp}")
+                                elif val == 'Tctl' and not self.k10_cpu_temp:
+                                    self.k10_cpu_temp = temp
+                                    print(f"Found AMD k10temp Tctl {temp}")
+                # There are no individual CPU core temps for k10temp
+                print(self.k10_cpu_temp)
+                if self.k10_cpu_temp:
+                    self.k10_cpu_temp = self.k10_cpu_temp.replace("label", "input")
+                    # loop for available cores
+                    for _ in range(self.cpu_num):
+                        self.coretemps_sysfs.append(self.k10_cpu_temp)
+                else:
+                    print("Error: Sysfs AMD coretemps are not available")
+                    use_hwmon_temp = True
+        # check cpu turbo sysfs interfaces
+        if self.is_intel_cpu:
+            self.cpu_no_turbo = "/sys/devices/system/cpu/intel_pstate/no_turbo"
+            if Path(self.cpu_no_turbo).is_file():
+                print("Found: Sysfs CPU Turbo")
+            else:
+                print("Error: Sysfs CPU Turbo not found")
+
+            self.cpu_min_perf = "/sys/devices/system/cpu/intel_pstate/min_perf_pct"
+            if Path(self.cpu_min_perf).is_file():
+                print("Found: Sysfs CPU min perf")
+            else:
+                print("Error: Sysfs CPU min perf not found")
+
+            self.cpu_max_perf = "/sys/devices/system/cpu/intel_pstate/max_perf_pct"
+            if Path(self.cpu_max_perf).is_file():
+                print("Found: Sysfs CPU max perf")
+            else:
+                print("Error: Sysfs CPU max perf not found")
+
+            self.cpu_min_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq"
+            if Path(self.cpu_min_scaling).is_file():
+                print("Found: Sysfs CPU min scaling")
+            else:
+                print("Error: Sysfs CPU min scaling not found")
+
+            self.cpu_max_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq"
+            if Path(self.cpu_max_scaling).is_file():
+                print("Found: Sysfs CPU max scaling")
+            else:
+                print("Error: Sysfs CPU max scaling not found")
+        elif not self.is_intel_cpu:
+            self.cpu_no_turbo = "/sys/devices/system/cpu/cpufreq/boost"  # 0 or 1
+            if Path(self.cpu_no_turbo).is_file():
+                print("Found: Sysfs CPU Turbo")
+            else:
+                print("Error: Sysfs CPU Turbo not found")
+
+            # amd_pstate does not have a sysfs entry for lowest perf
+            self.cpu_min_perf = "/sys/devices/system/cpu/cpu0/acpi_cppc/lowest_nonlinear_perf"
+            if Path(self.cpu_min_perf).is_file():
+                print("Found: Sysfs CPU min perf")
+            else:
+                print("Error: Sysfs CPU min perf not found")
+
+            # values between acpi_cppc and amd_pstate differ for highest perf
+            # sample output shows cpu0 and policy0 to be equal, but the rest differ
+            self.cpu_max_perf = "/sys/devices/system/cpu/cpufreq/policy0/amd_pstate_highest_perf"
+            if Path(self.cpu_max_perf).is_file():
+                print("Found: Sysfs CPU max perf")
+            else:
+                print("Error: Sysfs CPU max perf not found")
+                self.cpu_max_perf = "/sys/devices/system/cpu/cpu0/acpi_cppc/highest_perf"
+                if Path(self.cpu_max_perf).is_file():
+                    print("Found: Sysfs CPU max perf using alternative")
+                else:
+                    print("Error: Sysfs CPU max perf not found")
+
+            self.cpu_min_scaling = "/sys/devices/system/cpu/cpufreq/policy0/amd_pstate_lowest_nonlinear_freq"
+            if Path(self.cpu_min_scaling).is_file():
+                print("Found: Sysfs CPU min scaling")
+            else:
+                self.cpu_min_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq"
+                if Path(self.cpu_min_scaling).is_file():
+                    print("Found: Sysfs CPU min scaling using alternative")
+                else:
+                    print("Error: Sysfs CPU min scaling not found")
+
+            self.cpu_max_scaling = "/sys/devices/system/cpu/cpufreq/policy0/amd_pstate_max_freq"
+            if Path(self.cpu_max_scaling).is_file():
+                print("Found: Sysfs CPU max scaling")
+            else:
+                self.cpu_max_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq"
+                if Path(self.cpu_max_scaling).is_file():
+                    print("Found: Sysfs CPU max scaling using alternative")
+                else:
+                    print("Error: Sysfs CPU max scaling not found")
+        else:
+            print("Error: Sysfs CPU Turbo")
+
+        # check for i8k
+        self.i8kmon_ctl = shutil.which("i8kctl")
+        if Path(self.i8kmon_ctl).is_file():
+            print(f"Found: i8kctl {self.i8kmon_ctl}")
+        else:
+            print("Error: i8kctl not found")
+
+        # check dell_smm_hwmon fan1
+        try:
+            self.i8kmon_fan1 = glob.glob(
+                "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan1_input"
+            )[0]
+            self.i8kmon_fan1_target = glob.glob(
+                "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan1_target"
+            )[0]
+        except Exception:
+            print("Error: dell_smm_hwmon fan1 not found")
+            self.i8kmon_fan1 = self.ERR_PATH
+            self.i8kmon_fan1_target = self.ERR_PATH
+        else:
+            if Path(self.i8kmon_fan1).is_file():
+                print("Found: dell_smm_hwmon fan1")
+                # check dell_smm_hwmon fan1_target
+                if Path(self.i8kmon_fan1_target).is_file():
+                    print("Found: dell_smm_hwmon fan1_target")
+                else:
+                    print("Error: dell_smm_hwmon fan1_target not found")
+
+        # check dell_smm_hwmon fan2
+        try:
+            self.i8kmon_fan2 = glob.glob(
+                "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan2_input"
+            )[0]
+            self.i8kmon_fan2_target = glob.glob(
+                "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan2_target"
+            )[0]
+        except Exception:
+            print("Error: dell_smm_hwmon fan2 not found")
+            self.i8kmon_fan2 = self.ERR_PATH
+            self.i8kmon_fan2_target = self.ERR_PATH
+        else:
+            if Path(self.i8kmon_fan2).is_file():
+                print("Found: dell_smm_hwmon fan2")
+                # check dell_smm_hwmon fan2_target
+                if Path(self.i8kmon_fan2_target).is_file():
+                    print("Found: dell_smm_hwmon fan2_target")
+                else:
+                    print("Error: dell_smm_hwmon fan2_target not found")
+
+        # check for dell_smm_hwmon CPU temp
+        try:
+            self.i8kmon_temp = glob.glob(
+                "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/temp1_input"
+            )[0]
+        except Exception:
+            print("Error: dell_smm_hwmon CPU temp not found")
+            self.i8kmon_temp = self.ERR_PATH
+        else:
+            if Path(self.i8kmon_temp).is_file():
+                print("Found: dell_smm_hwmon CPU temp")
+                if use_hwmon_temp:
+                    self.coretemps_sysfs.append(self.i8kmon_temp)
+                    print("Warning: Using dell_smm_hwmon for CPU temp")
+            else:
+                print("Error: dell_smm_hwmon CPU temp not found")
+                # TODO - if not found use i8kctl if available
+
+        # check for i8kmon.conf
+        self.i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
+        if self.i8kmon_conf.is_file():
+            print(f"Found: i8kmon.conf {self.i8kmon_conf}")
+        else:
+            print("Error: i8kmon.conf not found")
+
+        # check for smbios-thermal-ctl
+        self.smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
+        if self.smbois_ctl.is_file():
+            print(f"Found: (SM)BIOS Thermal Control {self.smbois_ctl}")
+        else:
+            print("Error: (SM)BIOS Thermal Control not found")
+
+        # check i8kmon prerequisites
+        # minimum 1 fan and CPU temp
+        i8kmon_passed = bool(
+            (
+                (Path(self.i8kmon_fan1).is_file()
+                    or Path(self.i8kmon_fan2).is_file())
+                and (Path(self.i8kmon_fan1_target).is_file()
+                    or Path(self.i8kmon_fan2_target).is_file())
+                and Path(self.i8kmon_temp).is_file()
+            )
+        )
+        # check sysfs prerequisites
         sysfs_passed = bool(
             (Path(self.power_sysfs).is_file()
              and Path(self.scaling_sysfs).is_file()
              and Path(self.tdp).is_file() and Path(self.ht_sysfs).is_file()
              and Path(cpu_siblings_sysfs).is_file()))
-        # check cpu coretemp sysfs interface
-        try:
-            for cpu in range(self.num_phy_cores):
-                self.coretemps_sysfs.append(
-                    glob.glob(
-                        f"/sys/devices/platform/coretemp.0/hwmon/*/temp{cpu + 1}_input"
-                    )[0])
-            for t in self.coretemps_sysfs:
-                temp = Path(t).resolve()
-                if not temp.is_file():
-                    print(f"error file {t} is not available")
-        except IOError:
-            return False
-        # check cpu turbo sysfs interfaces
-        self.cpu_no_turbo = "/sys/devices/system/cpu/intel_pstate/no_turbo"
-        self.cpu_min_perf = "/sys/devices/system/cpu/intel_pstate/min_perf_pct"
-        self.cpu_max_perf = "/sys/devices/system/cpu/intel_pstate/max_perf_pct"
-        self.cpu_min_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq"
-        self.cpu_max_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq"
-        cpu_turbo_passed = bool(
-            (Path(self.cpu_no_turbo).is_file() and
-             Path(self.cpu_min_perf).is_file() and
-             Path(self.cpu_max_perf).is_file() and
-             Path(self.cpu_min_scaling).is_file() and
-             Path(self.cpu_max_scaling).is_file())
-        )
-        # check for i8k
-        self.i8kmon_ctl = shutil.which("i8kctl")
-        self.i8kmon_fan1 = glob.glob(
-            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan1_input"
-        )[0]
-        self.i8kmon_fan2 = glob.glob(
-            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan2_input"
-        )[0]
-        self.i8kmon_fan1_target = glob.glob(
-            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan1_target"
-        )[0]
-        self.i8kmon_fan2_target = glob.glob(
-            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan2_target"
-        )[0]
-        self.i8kmon_temp = glob.glob(
-            "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/temp1_input"
-        )[0]
-        i8kmon_passed = bool(
-            (
-                Path(self.i8kmon_fan1).is_file()
-                and Path(self.i8kmon_fan2).is_file()
-                and Path(self.i8kmon_fan1_target).is_file()
-                and Path(self.i8kmon_fan2_target).is_file()
-                and Path(self.i8kmon_temp).is_file()
-            )
-        )
-        self.i8kmon_conf = Path("/etc/i8kmon.conf").resolve()
-        # check for smbios-thermal-ctl
-        self.smbois_ctl = Path(str(shutil.which("smbios-thermal-ctl"))).resolve()
         # majority of the information is taken from the
         # dell_smm_hwmon kernel module
-        if sysfs_passed and cpu_turbo_passed and i8kmon_passed and Path(str(
-                self.i8kmon_ctl)).is_file() and Path(
-                    self.smbois_ctl).is_file():
+        # minimum Sysfs, i8kmon, i8kctl or smbios
+        if sysfs_passed and i8kmon_passed and (Path(str(
+                self.i8kmon_ctl)).is_file() or Path(
+                    self.smbois_ctl).is_file()):
+            # read config file
             self.get_i8k_information()
             return True
         # else disable menu and return False
@@ -772,9 +1028,10 @@ class I8kGui(QMainWindow):
 
     def get_cpu_tdp(self):
         """get_cpu_tdp."""
-        with open(self.tdp, 'r') as f:
-            self.cpu_tdp.setText(f"{int(f.read().strip()) // 1000000} W")
-        return self.cpu_tdp
+        if self.tdp_enabled:
+            with open(self.tdp, 'r') as f:
+                self.cpu_tdp.setText(f"{int(f.read().strip()) // 1000000} W")
+            return self.cpu_tdp
 
     def get_i8k_information(self):
         """get_i8k_information."""
@@ -1113,27 +1370,26 @@ class I8kGui(QMainWindow):
 
     def read_i8kmon_info(self):
         """read_i8kmon_info."""
-        with open(self.i8kmon_fan1) as fan1, \
-                open(self.i8kmon_fan2) as fan2, \
-                open(self.i8kmon_fan1_target) as fan1_target, \
-                open(self.i8kmon_fan2_target) as fan2_target, \
-                open(self.i8kmon_temp) as temp, \
-                open(self.cpu_no_turbo) as no_turbo, \
-                open(self.cpu_min_perf) as min_perf, \
-                open(self.cpu_max_perf) as max_perf, \
-                open(self.cpu_min_scaling) as min_scaling, \
-                open(self.cpu_max_scaling) as max_scaling:
-            # format inputs
-            i8kmon_fan1 = fan1.readline().strip('\n')
-            i8kmon_fan2 = fan2.readline().strip('\n')
-            i8kmon_fan1_target = fan1_target.readline().strip('\n')
-            i8kmon_fan2_target = fan2_target.readline().strip('\n')
-            i8kmon_temp = temp.readline().strip('\n')
-            cpu_no_turbo = no_turbo.readline().strip('\n')
-            cpu_min_perf = min_perf.readline().strip('\n')
-            cpu_max_perf = max_perf.readline().strip('\n')
-            cpu_min_scaling = min_scaling.readline().strip('\n')
-            cpu_max_scaling = max_scaling.readline().strip('\n')
+        with self.opened_w_error(self.i8kmon_fan1) as (fan1, fan1_err), \
+                self.opened_w_error(self.i8kmon_fan2) as (fan2, fan2_err), \
+                self.opened_w_error(self.i8kmon_fan1_target) as (fan1_target, fan1_target_err), \
+                self.opened_w_error(self.i8kmon_fan2_target) as (fan2_target, fan2_target_err), \
+                self.opened_w_error(self.i8kmon_temp) as (temp, temp_err), \
+                self.opened_w_error(self.cpu_no_turbo) as (no_turbo, no_turbo_err), \
+                self.opened_w_error(self.cpu_min_perf) as (min_perf, min_perf_err), \
+                self.opened_w_error(self.cpu_max_perf) as (max_perf, max_perf_err), \
+                self.opened_w_error(self.cpu_min_scaling) as (min_scaling, min_scaling_err), \
+                self.opened_w_error(self.cpu_max_scaling) as (max_scaling, max_scaling_err):
+            i8kmon_fan1 = fan1.readline().strip('\n') if fan1 else "0"
+            i8kmon_fan2 = fan2.readline().strip('\n') if fan2 else "0"
+            i8kmon_fan1_target = fan1_target.readline().strip('\n') if fan1_target else "0"
+            i8kmon_fan2_target = fan2_target.readline().strip('\n') if fan2_target else "0"
+            i8kmon_temp = temp.readline().strip('\n') if temp else "0"
+            cpu_no_turbo = no_turbo.readline().strip('\n') if no_turbo else "0"
+            cpu_min_perf = min_perf.readline().strip('\n') if min_perf else "N/A"
+            cpu_max_perf = max_perf.readline().strip('\n') if max_perf else "N/A"
+            cpu_min_scaling = min_scaling.readline().strip('\n') if min_scaling else "0"
+            cpu_max_scaling = max_scaling.readline().strip('\n') if max_scaling else "0"
             # cpu temp
             c_temp = f"{float(i8kmon_temp.strip()) / 1000}{self.degree_sign}C".rjust(20)
             self.cpu_temp.setText(f"CPU Temp:\t{c_temp}")
@@ -1152,10 +1408,12 @@ class I8kGui(QMainWindow):
                 13)
             self.right_fan_status.setText(f"Right Fan Mode:{right_mode}")
             # cpu turbo
-            if int(cpu_no_turbo.strip()) == 0:
-                t_status = 'Enabled'
+            if self.is_intel_cpu and no_turbo:
+                t_status = 'Enabled' if int(cpu_no_turbo.strip()) == 0 else 'Disabled'
+            elif not self.is_intel_cpu and no_turbo:
+                t_status = 'Disabled' if int(cpu_no_turbo.strip()) == 0 else 'Enabled'
             else:
-                t_status = 'Disabled'
+                t_status = 'N/A'
             self.cpu_turbo_enabled.setText(f"CPU Turbo Boost:\t{t_status}")
             c_min_freq = int(cpu_min_scaling.strip()) / 1000
             c_min_freq = f"{c_min_freq:.0f} MHz".rjust(17)
@@ -1220,17 +1478,32 @@ class I8kGui(QMainWindow):
             c_mhz = f"{mhz} MHz".rjust(20)
             self.cpu_mhz.setText(f"CPU Freq:\t{c_mhz}")
             for i, c in enumerate(self.cpu_freq_list):
-                j = self.cpu_temp_sensors[i]
+                if self.cpu_temp_sensors and len(self.cpu_temp_sensors) > 1:
+                    j = self.cpu_temp_sensors[i]
+                elif self.cpu_temp_sensors:
+                    j = self.cpu_temp_sensors[0]
+                else:
+                    j = 0
                 # CPU number - 7 chars "CPU 01:"
                 _num = str("{:02d}".format(i))
                 cpu_text = f"CPU {_num}:"
                 # CPU usage - 7 chars "100.0 %"
-                usage = str(usage_per[i]).center(5)
+                if usage_per and len(usage_per) > 1:
+                    usage = str(usage_per[i]).center(5)
+                elif usage_per:
+                    usage = str(usage_per[0]).center(5)
+                else:
+                    usage = str(0.0).center(5)
                 usage_text = f"{usage} %"
                 # CPU MHz - 8 chars "4000 MHz"
                 mhz_text = f"{all_mhz[i]:04d} MHz"
                 # CPU core Temp - 7 chars "100 C"
-                temp = str("{:2.0f}".format(coretemps[j])).rjust(4)
+                if coretemps and len(coretemps) > 1:
+                    temp = str("{:2.0f}".format(coretemps[j])).rjust(4)
+                elif coretemps:
+                    temp = str("{:2.0f}".format(coretemps[0])).rjust(4)
+                else:
+                    temp = str("{:2.0f}".format(0.0)).rjust(4)
                 temp_text = f"{temp}{self.degree_sign}C"
                 # Output "CPU 01: 100.0 % 4000 MHz 80 C" - total 29 chars
                 per_cpu_text = cpu_text.rjust(7) + usage_text.center(
@@ -1239,27 +1512,29 @@ class I8kGui(QMainWindow):
 
     def read_cpu_gov_info(self):
         """read_cpu_gov_info. Gather current CPU governor"""
-        try:
-            with open(self.scaling_sysfs, 'r') as gov_sys:
-                gov = gov_sys.readline().strip()
-                c_gov = f"{gov.capitalize()}".rjust(15)
-                self.cpu_governor.setText(f"CPU Governor: {c_gov}")
-        except IOError as e:
-            self.critical_error = True
-            if self.tray:
-                self.tray.showMessage(
-                    "i8kgui", f"Error cannot find "
-                    f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
-                    f"\n\n{e}",
-                    icon=QSystemTrayIcon.Critical,
-                    msecs=10000)
+        if self.scaling_enabled:
+            try:
+                with open(self.scaling_sysfs, 'r') as gov_sys:
+                    gov = gov_sys.readline().strip()
+                    c_gov = f"{gov.capitalize()}".rjust(15)
+                    self.cpu_governor.setText(f"CPU Governor: {c_gov}")
+            except IOError as e:
+                self.critical_error = True
+                if self.tray:
+                    self.tray.showMessage(
+                        "i8kgui", f"Error cannot find "
+                        f"/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor."
+                        f"\n\n{e}",
+                        icon=QSystemTrayIcon.Critical,
+                        msecs=10000)
 
     def read_power_supply_status(self):
         """read_power_supply_status."""
         # gather power supply status
-        with open(self.power_sysfs, 'r') as pwr_sys:
-            pwr_ac = pwr_sys.readline().strip()
-            self.ac_power_supply_on = int(pwr_ac) == 1
+        if self.power_enabled:
+            with open(self.power_sysfs, 'r') as pwr_sys:
+                pwr_ac = pwr_sys.readline().strip()
+                self.ac_power_supply_on = int(pwr_ac) == 1
 
     def read_proc(self):
         """read_proc."""
@@ -1382,6 +1657,17 @@ class I8kGui(QMainWindow):
         self.info_dialog.raise_()
         self.info_dialog.setFocus()
 
+    @contextmanager
+    def opened_w_error(self, f_name, mode="r"):
+        try:
+            f = open(f_name, mode)
+        except IOError as err:
+            yield None, err
+        else:
+            try:
+                yield f, None
+            finally:
+                f.close()
 
 if __name__ == '__main__':
     app = QApplication([])
