@@ -746,10 +746,10 @@ class I8kGui(QMainWindow):
             )
         )
         # check sysfs prerequisites
+        # minimum scaling, SMT and CPU core siblings
         sysfs_passed = bool(
-            (Path(self.power_sysfs).is_file()
-             and Path(self.scaling_sysfs).is_file()
-             and Path(self.tdp).is_file() and Path(self.ht_sysfs).is_file()
+            (Path(self.scaling_sysfs).is_file()
+             and Path(self.ht_sysfs).is_file()
              and Path(cpu_siblings_sysfs).is_file()))
         # majority of the information is taken from the
         # dell_smm_hwmon kernel module
