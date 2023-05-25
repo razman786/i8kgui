@@ -55,6 +55,9 @@ class I8kGui(QMainWindow):
         self.coretemps_sysfs = []
         self.is_intel_cpu = True
         self.cpu_num = psutil.cpu_count()
+        self.tray_menu = QMenu()
+        self.thermal_menu_group = QActionGroup(self.tray_menu)
+        self.thermal_control_menu = QMenu("I8K Thermal Management")
         # check dependencies
         self.check_prerequisites()
         self.degree_sign = u'\N{DEGREE SIGN}'
@@ -70,9 +73,6 @@ class I8kGui(QMainWindow):
         self.current_thermal_mode = None
         self.always_on = False
         self.bios_thermal_control_on = False
-        self.tray_menu = QMenu()
-        self.thermal_menu_group = QActionGroup(self.tray_menu)
-        self.thermal_control_menu = QMenu("I8K Thermal Management")
         self.monitor_interval = 1000
         self.always_on_checkbox = QCheckBox()
         self.thermal_checkbox = QCheckBox()
