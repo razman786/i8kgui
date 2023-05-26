@@ -60,8 +60,6 @@ if [[ $status == "enable" ]]; then
 elif [[ $status == "disable" ]]; then
   systemctl start dell-bios-fan-control.service
   systemctl start i8kmon.service
-  smbios-thermal-ctl -i | grep -A 4 'Supported Thermal Modes'
-  smbios-thermal-ctl -g | grep -A 1 'Current Thermal Modes'
 elif [[ $status == "status" ]]; then
   smbios-thermal-ctl -g | grep -A 1 'Current Thermal Modes' | (echo -n "Status " && cat)
 fi
