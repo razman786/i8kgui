@@ -1311,25 +1311,27 @@ class I8kGui(QMainWindow):
             return
 
         # find smbios script
-        smbios_file = Path(str(shutil.which("smbios-sys-info")))
-        if not smbios_file.is_file():
-            if self.tray:
-                self.tray.showMessage(
-                    "i8kgui",
-                    "Error please install python3-libsmbios, "
-                    "smbios-sys-info not found",
-                    icon=QSystemTrayIcon.Critical,
-                    msecs=10000)
-            return
-        # self.smbios_message("Executing process")
-        # Keep a reference to the QProcess (e.g. on self) while it's running.
-        self.p = QProcess()
-        self.p.readyReadStandardOutput.connect(self.handle_smbios_stdout)
-        self.p.readyReadStandardError.connect(self.handle_smbios_stderr)
-        self.p.stateChanged.connect(self.handle_process_state)
-        # Clean up once complete.
-        self.p.finished.connect(self.smbios_process_finished)
-        self.p.start("pkexec", [str(smbios_file.resolve())])
+        if self.is_smbios_active:
+            smbios_file = Path(str(shutil.which("smbios-sys-info")))
+            if not smbios_file.is_file():
+                if self.tray:
+                    self.tray.showMessage(
+                        "i8kgui",
+                        "Error please install python3-libsmbios, "
+                        "smbios-sys-info not found",
+                        icon=QSystemTrayIcon.Critical,
+                        msecs=10000)
+                return
+            # Keep a reference to the QProcess (e.g. on self) while it's running.
+            self.p = QProcess()
+            self.p.readyReadStandardOutput.connect(self.handle_smbios_stdout)
+            self.p.readyReadStandardError.connect(self.handle_smbios_stderr)
+            self.p.stateChanged.connect(self.handle_process_state)
+            # Clean up once complete.
+            self.p.finished.connect(self.smbios_process_finished)
+            self.p.start("pkexec", [str(smbios_file.resolve())])
+        else:
+            print("Error: libsmbios is unavailable")
 
     def handle_smbios_stderr(self):
         """handle_smbios_stderr.
