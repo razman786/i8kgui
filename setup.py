@@ -2,7 +2,7 @@ import os
 
 from setuptools import find_packages, setup
 
-__version__ = "0.8"
+__version__ = "0.8.3"
 
 requirements = [
     'PySide6',
