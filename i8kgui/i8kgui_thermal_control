@@ -29,37 +29,50 @@ if [[ ($1 == "--help") || $1 == "-h" ]]; then
   exit 0
 fi
 
+# enable BIOS fan control
 if [[ ($1 == "--enable") || $1 == "-e" ]]; then
   status="enable"
 fi
 
+# disable BIOS fan control and enable i8kmon
 if [[ ($1 == "--disable") || $1 == "-d" ]]; then
   status="disable"
 fi
 
+# get current thermal mode from libsmbios
 if [[ ($1 == "--status") || $1 == "-s" ]]; then
   status="status"
 fi
 
-if [[ ! -f "/usr/sbin/smbios-thermal-ctl" ]]; then
-  printf "Error smbios-thermal-ctl not found" >&2
-  exit 1
-elif [[ ! -f "/lib/systemd/system/i8kmon.service" ]]; then
-  printf "Error i8kmon.service not found" >&2
-  exit 1
-elif [[ ! -f "/etc/systemd/system/dell-bios-fan-control.service" ]]; then
-  printf "Error dell-bios-fan-control.service not found" >&2
-  exit 1
-fi
-
+# enable BIOS fan control
 if [[ $status == "enable" ]]; then
-  systemctl stop i8kmon.service
-  systemctl stop dell-bios-fan-control.service
-  smbios-thermal-ctl -i | grep -A 4 'Supported Thermal Modes'
-  smbios-thermal-ctl -g | grep -A 1 'Current Thermal Modes'
+  # check i8kmon is available to stop
+  if [[ -f "/etc/systemd/system/multi-user.target.wants/i8kmon.service" ]]; then
+    systemctl stop i8kmon.service
+  fi
+  # check dell-bios-fan-control is available to stop
+  if [[ -f "/etc/systemd/system/multi-user.target.wants/dell-bios-fan-control.service" ]]; then
+    systemctl stop dell-bios-fan-control.service
+  fi
+  # check smbios-thermal-ctl is available from libsmbios
+  if [[ "$(which smbios-thermal-ctl)" ]]; then
+    smbios-thermal-ctl -i | grep -A 4 'Supported Thermal Modes'
+    smbios-thermal-ctl -g | grep -A 1 'Current Thermal Modes'
+  fi
+# disable BIOS fan control and enable i8kmon
 elif [[ $status == "disable" ]]; then
-  systemctl start dell-bios-fan-control.service
-  systemctl start i8kmon.service
+  # check dell-bios-fan-control is available to start - not all systems require this
+  if [[ -f "/etc/systemd/system/multi-user.target.wants/dell-bios-fan-control.service" ]]; then
+    systemctl start dell-bios-fan-control.service
+  fi
+  # check i8kmon is available to start
+  if [[ -f "/etc/systemd/system/multi-user.target.wants/i8kmon.service" ]]; then
+    systemctl start i8kmon.service
+  fi
+# get current thermal mode from libsmbios
 elif [[ $status == "status" ]]; then
-  smbios-thermal-ctl -g | grep -A 1 'Current Thermal Modes' | (echo -n "Status " && cat)
+  # check smbios-thermal-ctl is available from libsmbios
+  if [[ "$(which smbios-thermal-ctl)" ]]; then
+    smbios-thermal-ctl -g | grep -A 1 'Current Thermal Modes' | (echo -n "Status " && cat)
+  fi
 fi
