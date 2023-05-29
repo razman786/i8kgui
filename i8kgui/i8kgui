@@ -805,7 +805,7 @@ class I8kGui(QMainWindow):
                 print("Found: dell_smm_hwmon CPU temp")
                 if use_hwmon_temp:
                     self.coretemps_sysfs.append(self.i8kmon_temp)
-                    print("Warning: Using dell_smm_hwmon for CPU temp")
+                    print("Warn: Using dell_smm_hwmon for CPU temp")
             else:
                 print("Error: dell_smm_hwmon CPU temp not found")
                 # TODO - if not found use i8kctl if available?
@@ -859,7 +859,6 @@ class I8kGui(QMainWindow):
             self.p.close()
             self.p = None
             smbios_stdout = bytes(smbios_stdout).decode("utf8")
-            # is_i8kmon_active = output_i8kmon.strip('\n')
             if smbios_stdout.startswith('Status Current Thermal Modes'):
                 split_stdout = smbios_stdout.split('\n')
                 split_stdout = self.sanitise_thermal_modes(split_stdout)
