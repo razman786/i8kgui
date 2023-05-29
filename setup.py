@@ -7,6 +7,7 @@ __version__ = "0.8"
 requirements = [
     'PySide6',
     'psutil',
+    'py-cpuinfo',
 ]
 
 scripts = [
