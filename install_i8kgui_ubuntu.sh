@@ -35,11 +35,11 @@ echo() {
 }
 
 echo ""
-echo "==== i8kgui v0.8.1 - Ubuntu install script ===="
+echo "==== i8kgui v0.8.3 - Ubuntu install script ===="
 echo "==== Log file: $log_file ===="
 echo "==== Error log: $error_file ===="
 echo ""
-printf "==== i8kgui v0.8.1 - Ubuntu install script ====\n"
+printf "==== i8kgui v0.8.3 - Ubuntu install script ====\n"
 
 # sudo runner by default
 sudo_runner="sudo"
