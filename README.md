@@ -15,7 +15,7 @@ A Dell thermal management GUI to control fan speeds and monitor temperatures. In
   <img src="https://user-images.githubusercontent.com/7116312/202192004-1bc59976-edd5-4d81-a46c-b9450d677ca8.png" alt="info" width="250" />
 </p>
 
-i8kgui uses dell-smm-hwmon, i8kutils and Sysfs to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
+i8kgui uses `dell-smm-hwmon`, `i8kutils` and Sysfs to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
 
 ### Features
 
