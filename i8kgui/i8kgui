@@ -1769,7 +1769,11 @@ class I8kGui(QMainWindow):
         self.cpu_mhz.setText(f"CPU Freq:\t{c_mhz}")
         for i, c in enumerate(self.cpu_freq_list):
             if self.cpu_temp_sensors and len(self.cpu_temp_sensors) > 1:
-                j = self.cpu_temp_sensors[i]
+                try:
+                    j = self.cpu_temp_sensors[i]
+                except IndexError:
+                    print(f"Debug: i = {i}, CPU freq list {self.cpu_freq_list}, CPU temps {self.cpu_temp_sensors}")
+                    j = self.cpu_temp_sensors[0]
             elif self.cpu_temp_sensors:
                 j = self.cpu_temp_sensors[0]
             else:
