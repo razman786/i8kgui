@@ -633,7 +633,7 @@ class I8kGui(QMainWindow):
                             val = line.strip('\n')
                             if val == 'k10temp':
                                 self.k10_hwmon = os.path.dirname(hwmon)
-                                print(f"Found AMD k10temp {self.k10_hwmon}")
+                                print(f"Found: AMD k10temp {self.k10_hwmon}")
             # look for Tdie or Tctl in k10temp
             # https://www.kernel.org/doc/html/latest/hwmon/k10temp.html
             if self.k10_hwmon:
@@ -649,10 +649,10 @@ class I8kGui(QMainWindow):
                                 val = line.strip('\n')
                                 if val == 'Tdie':
                                     self.k10_cpu_temp = temp
-                                    print(f"Found AMD k10temp Tdie {temp}")
+                                    print(f"Found: AMD k10temp Tdie {temp}")
                                 elif val == 'Tctl' and not self.k10_cpu_temp:
                                     self.k10_cpu_temp = temp
-                                    print(f"Found AMD k10temp Tctl {temp}")
+                                    print(f"Found: AMD k10temp Tctl {temp}")
                 # There are no individual CPU core temps for k10temp
                 if self.k10_cpu_temp:
                     self.k10_cpu_temp = self.k10_cpu_temp.replace("label", "input")
@@ -873,7 +873,7 @@ class I8kGui(QMainWindow):
                 if self.current_thermal_mode_data:
                     self.is_smbios_active = True  # DEBUG = False
             else:
-                print("Error: (SM)BIOS Thermal Control not found")
+                print("Error: (SM)BIOS Thermal Control is not functional")
         else:
             print("Error: (SM)BIOS Thermal Control not found")
 
