@@ -225,7 +225,7 @@ class I8kGui(QMainWindow):
             j = 0
             once = True
             for _ in self.cpu_siblings:
-                if j > 5 and once:
+                if j > self.num_phy_cores - 1 and once:
                     j = 0
                     once = False
                 self.cpu_temp_sensors.append(j)
