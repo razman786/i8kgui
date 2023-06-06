@@ -219,6 +219,8 @@ class I8kGui(QMainWindow):
                                     self.cpu_siblings[int(pair[0])] = int(pair[1])
                                 else:
                                     self.cpu_siblings[int(pair[1])] = int(pair[0])
+            if not pair:
+                self.cpu_siblings[0] = 0
             # create CPU temp sensor list
             j = 0
             once = True
@@ -1217,19 +1219,20 @@ class I8kGui(QMainWindow):
         :param self:
         """
         # build menu for per CPU core information
-        for i in range(self.cpu_num):
-            self.cpu_curr_freqs.append(
-                f"/sys/devices/system/cpu/cpu{i}/cpufreq/scaling_cur_freq")
-            c_action = QAction(f"CPU {i}")
-            c_action.setCheckable(False)
-            self.cpu_details.addAction(c_action)
-            self.cpu_freq_list.append(c_action)
-        # build menu for CPU turbo boost stats
-        self.cpu_turbo.addAction(self.cpu_turbo_enabled)
-        self.cpu_turbo.addAction(self.min_cpu_freq)
-        self.cpu_turbo.addAction(self.max_cpu_freq)
-        self.cpu_turbo.addAction(self.min_cpu_turbo)
-        self.cpu_turbo.addAction(self.max_cpu_turbo)
+        if self.scaling_enabled:
+            for i in range(self.cpu_num):
+                self.cpu_curr_freqs.append(
+                    f"/sys/devices/system/cpu/cpu{i}/cpufreq/scaling_cur_freq")
+                c_action = QAction(f"CPU {i}")
+                c_action.setCheckable(False)
+                self.cpu_details.addAction(c_action)
+                self.cpu_freq_list.append(c_action)
+            # build menu for CPU turbo boost stats
+            self.cpu_turbo.addAction(self.cpu_turbo_enabled)
+            self.cpu_turbo.addAction(self.min_cpu_freq)
+            self.cpu_turbo.addAction(self.max_cpu_freq)
+            self.cpu_turbo.addAction(self.min_cpu_turbo)
+            self.cpu_turbo.addAction(self.max_cpu_turbo)
 
     def get_cpu_tdp(self):
         """get_cpu_tdp.
@@ -1716,12 +1719,13 @@ class I8kGui(QMainWindow):
         try:
             cpu_procs = []
             all_mhz = []
-            for cpu in self.cpu_curr_freqs:
-                with open(cpu, 'r') as proc:
-                    cpu_procs.append(proc)
-                    for temp in proc:
-                        mhz = int(temp.strip('\n')) // 1000
-                        all_mhz.append(mhz)
+            if self.scaling_enabled:
+                for cpu in self.cpu_curr_freqs:
+                    with open(cpu, 'r') as proc:
+                        cpu_procs.append(proc)
+                        for temp in proc:
+                            mhz = int(temp.strip('\n')) // 1000
+                            all_mhz.append(mhz)
             coretemps = []
             for coretemp in self.coretemps_sysfs:
                 with open(coretemp, 'r') as cpu_temps:
