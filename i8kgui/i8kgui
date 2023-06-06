@@ -221,6 +221,7 @@ class I8kGui(QMainWindow):
                                     self.cpu_siblings[int(pair[1])] = int(pair[0])
             if not pair:
                 self.cpu_siblings[0] = 0
+            print(f"Found: CPU siblings: {self.cpu_siblings}")
             # create CPU temp sensor list
             j = 0
             once = True
@@ -230,6 +231,7 @@ class I8kGui(QMainWindow):
                     once = False
                 self.cpu_temp_sensors.append(j)
                 j += 1
+            print(f"Found: CPU temp sensors {self.cpu_temp_sensors}")
         except IOError as e:
             print(f"Error sysfs CPU siblings {e}")
 
