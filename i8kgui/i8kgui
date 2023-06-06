@@ -607,7 +607,7 @@ class I8kGui(QMainWindow):
                 else:
                     print("Error: Sysfs Intel coretemps not found")
                     use_hwmon_temp = True
-            except IOError:
+            except Exception:
                 print("Error: Sysfs Intel coretemps are not available")
                 use_hwmon_temp = True
         else:
