@@ -543,6 +543,7 @@ class I8kGui(QMainWindow):
             self.power_sysfs = "/sys/class/power_supply/ACAD/online"
             if Path(self.power_sysfs).is_file():
                 print("Found: Sysfs ACAD power ")
+                self.power_enabled = True
             else:
                 self.power_enabled = False
                 print("Error: Sysfs AC power not found")
