@@ -1,4 +1,4 @@
-# I8kGUI
+# I8KGUI
 
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/razman786/i8kgui/installation.yml?branch=master)  ![GitHub release (latest by date)](https://img.shields.io/github/v/release/razman786/i8kgui)
 
