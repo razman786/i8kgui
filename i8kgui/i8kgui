@@ -1754,12 +1754,14 @@ class I8kGui(QMainWindow):
         usage_per = psutil.cpu_percent(interval=0.0, percpu=True)
         c_use = f"{usage} %".rjust(20)
         self.cpu_usage.setText(f"CPU Usage:\t{c_use}")
-        if self.use_cpu_ave_freq:
+        if self.use_cpu_ave_freq and all_mhz:
             total_mhz = sum(all_mhz)
             mhz = total_mhz // len(all_mhz)
-        else:
+        elif all_mhz:
             all_mhz.sort()
             mhz = all_mhz[-1]
+        else:
+            mhz = "N/A"
         c_mhz = f"{mhz} MHz".rjust(20)
         self.cpu_mhz.setText(f"CPU Freq:\t{c_mhz}")
         for i, c in enumerate(self.cpu_freq_list):
@@ -1781,7 +1783,7 @@ class I8kGui(QMainWindow):
                 usage = str(0.0).center(5)
             usage_text = f"{usage} %"
             # CPU MHz - 8 chars "4000 MHz"
-            mhz_text = f"{all_mhz[i]:04d} MHz"
+            mhz_text = f"{all_mhz[i]:04d} MHz" if all_mhz else "N/A MHz"
             # CPU core Temp - 7 chars "100 C"
             if coretemps and len(coretemps) > 1:
                 temp = "{:2.0f}".format(coretemps[j]).rjust(4)
