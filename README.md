@@ -46,7 +46,7 @@ cd i8kgui
 
 #### Automated Installation Options
 
-Install option | i8kutils | Dell BIOS fan control | libsmbios | cpu_power_gui | undervolt
+Install option | i8kutils | Dell BIOS fan control | libsmbios | cpupower-gui | undervolt
 :---|:---:|:---:|:---:|:---:|:---:
 `-all` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:
 `-norm` | :white_check_mark: | :white_check_mark: | :white_check_mark: |  | 
