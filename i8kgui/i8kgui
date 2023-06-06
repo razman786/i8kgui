@@ -201,6 +201,7 @@ class I8kGui(QMainWindow):
                 f"/sys/devices/system/cpu/cpu{i}/topology/thread_siblings_list")
         try:
             sysfs_files = []
+            pair = None
             for cpu in self.cpu_sysfs_siblings:
                 cpu_sysfs = Path(cpu).resolve()
                 if cpu_sysfs.is_file():
@@ -213,10 +214,11 @@ class I8kGui(QMainWindow):
                                 pair = line.strip('\n').split('-')
                             else:
                                 print("Error: parsing CPU thread_siblings_list")
-                            if len(self.cpu_siblings) < num_cpu:
-                                self.cpu_siblings[int(pair[0])] = int(pair[1])
-                            else:
-                                self.cpu_siblings[int(pair[1])] = int(pair[0])
+                            if pair:
+                                if len(self.cpu_siblings) < num_cpu:
+                                    self.cpu_siblings[int(pair[0])] = int(pair[1])
+                                else:
+                                    self.cpu_siblings[int(pair[1])] = int(pair[0])
             # create CPU temp sensor list
             j = 0
             once = True
