@@ -4,7 +4,7 @@
 
 ## Introduction
 
-A Dell thermal management GUI to control fan speeds and monitor temperatures. Information is taken from [i8kutils](https://github.com/vitorafsr/i8kutils), Sysfs and [(SM)BIOS](https://github.com/dell/libsmbios) - created as a quick hack for my own needs (screenshots may be of an older version).
+A Dell thermal management GUI to control fan speeds and monitor temperatures. Information is taken from [dell-smm-hwmon](https://www.kernel.org/doc/html/latest/hwmon/dell-smm-hwmon.html), [i8kutils](https://github.com/vitorafsr/i8kutils), Sysfs and [(SM)BIOS](https://github.com/dell/libsmbios) - created as a quick hack for my own needs (screenshots may be of an older version).
 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/7116312/230130936-98105ddc-edcb-4499-b1a0-7c0b9337c1f4.png" alt="i8k" width="150" />
@@ -15,18 +15,18 @@ A Dell thermal management GUI to control fan speeds and monitor temperatures. In
   <img src="https://user-images.githubusercontent.com/7116312/202192004-1bc59976-edd5-4d81-a46c-b9450d677ca8.png" alt="info" width="250" />
 </p>
 
-i8kgui uses i8kutils and Sysfs to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
+i8kgui uses dell-smm-hwmon, i8kutils and Sysfs to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
 
 ### Features
 
-* Displays CPU temperature, fan speeds and fan modes
+* Displays CPU temperature, fan speed(s) and fan mode(s)
 * Displays the current CPU frequency
 * Displays CPU load
 * Displays individual CPU core frequencies and temperatures
 * Displays CPU Turbo information
 * Gathers metrics from the `dell_smm_hwmon` kernel module via Sysfs, instead of using `/proc/i8k`
 * Shows the currently active i8kutils configuration being used
-* Supports (SM)BIOS thermal management modes
+* Supports (SM)BIOS thermal management modes via libsmbios
 * Loads [cpupower-gui](https://github.com/vagnum08/cpupower-gui) (if installed) when `CPU Governor` is clicked
 * Option to display CPU frequency as either the highest (default) or the average value for all CPU cores
 * Adds polkit action configurations to allow users to change fan modes without a password
@@ -36,7 +36,7 @@ i8kgui uses i8kutils and Sysfs to gather information such as CPU temperature and
 ### Automated Installation (Recommended)
 
 This version has only been tested on Ubuntu 20.04 (it should also work on 22.04) and with a Dell laptop (XPS 7590). The
-installation script undertakes a system-wide installation and installs optional components (i.e. `cpupower-gui` and `undervolt`).
+installation script undertakes a system-wide installation, using `-all` which installs optional components (i.e. `cpupower-gui` and `undervolt`).
 
 ```
 git clone https://github.com/razman786/i8kgui
@@ -44,11 +44,23 @@ cd i8kgui
 ./install_i8kgui_ubuntu.sh
 ```
 
+#### Automated Installation Options
+
+Install option | i8kutils | Dell BIOS fan control | libsmbios | cpu_power_gui | undervolt
+:---|:---:|:---:|:---:|:---:|:---:
+`-all` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:
+`-norm` | :white_check_mark: | :white_check_mark: | :white_check_mark: |  | 
+`-min` | :white_check_mark: | | |  | 
+`-fix` | :white_check_mark: | :white_check_mark: | |  | 
+`-smbios` | :white_check_mark: | | :white_check_mark: |  | 
+`-power` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | 
+
+
 ### Manual Installation
 
 #### Prerequisites
 
-This version has only been used on Ubuntu 20.04 and with a Dell XPS laptop.
+This version has only been used on Ubuntu 20.04 and with a Dell XPS laptop. The [dell-smm-hwmon](https://www.kernel.org/doc/html/latest/hwmon/dell-smm-hwmon.html) kernel module is required for basic functionality.
 
 ##### i8kutils
 
@@ -58,7 +70,7 @@ Please install and configure i8kutils from https://github.com/vitorafsr/i8kutils
 sudo apt install i8kutils
 ```
 
-##### Dell BIOS Fan Control
+##### Dell BIOS Fan Control (optional)
 
 Please install Dell BIOS Fan Control from https://github.com/TomFreudenberg/dell-bios-fan-control and install it
 into `/usr/bin/`.
@@ -82,7 +94,7 @@ sudo cp dell-bios-fan-control.service /etc/systemd/system/
 sudo systemctl enable dell-bios-fan-control.service
 ```
 
-##### libsmbios
+##### libsmbios (optional)
 
 On Ubuntu 20.04 please install the following package to interface with (SM)BIOS information:
 
@@ -130,7 +142,7 @@ Once i8kutils is correctly configured using the `/etc/i8kmon.conf` file, please 
 running.
 
 ```
-sudo systemctl start dell-bios-fan-control.service && sudo systemctl start i8kmon.service
+sudo systemctl enable dell-bios-fan-control.service; sudo systemctl enable i8kmon.service
 ```
 
 i8kgui can be loaded by searching in Ubuntu's `Show Applications` icon in the application dock. Optionally, i8kgui can be
