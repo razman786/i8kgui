@@ -198,7 +198,7 @@ class I8kGui(QMainWindow):
         for i in range(self.cpu_num):
             self.cpu_sysfs_siblings.append(
                 f"/sys/devices/system/cpu/cpu{i}/topology/thread_siblings_list")
-        print(f"Found: is CPU SMT active? {self.cpu_ht_enabled}")
+        print(f"Found: CPU SMT active? {bool(self.cpu_ht_enabled)}")
         print(f"Found: {self.num_phy_cores} CPU Cores") 
         print(f"Found: {self.cpu_num} Logical CPU Cores")
         print(f"Found: {len(self.cpu_sysfs_siblings)} CPU siblings in list")
@@ -589,9 +589,9 @@ class I8kGui(QMainWindow):
         # check SMT
         self.ht_sysfs = "/sys/devices/system/cpu/smt/active"
         if Path(self.ht_sysfs).is_file():
-            print("Found: Sysfs SMT active")
+            print("Found: Sysfs SMT status")
         else:
-            print("Error: Sysfs SMT not active")
+            print("Error: Sysfs SMT status not found")
 
         # check CPU siblings
         cpu_siblings_sysfs = "/sys/devices/system/cpu/cpu0/topology/thread_siblings_list"
