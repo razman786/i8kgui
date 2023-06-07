@@ -194,35 +194,48 @@ class I8kGui(QMainWindow):
             except Exception:
                 self.cpu_ht_enabled = False
 
-        # get sibling per CPU core information
-        num_cpu = int(self.cpu_num / 2) if self.cpu_ht_enabled else self.cpu_num
+        self.cpu_sysfs_siblings = []
         for i in range(self.cpu_num):
             self.cpu_sysfs_siblings.append(
                 f"/sys/devices/system/cpu/cpu{i}/topology/thread_siblings_list")
+        print(f"Found: is CPU SMT active? {self.cpu_ht_enabled}")
+        print(f"Found: {self.num_phy_cores} CPU Cores") 
+        print(f"Found: {self.cpu_num} Logical CPU Cores")
+        print(f"Found: {len(self.cpu_sysfs_siblings)} CPU siblings in list")
         try:
             sysfs_files = []
-            pair = None
             for cpu in self.cpu_sysfs_siblings:
                 cpu_sysfs = Path(cpu).resolve()
                 if cpu_sysfs.is_file():
                     with open(cpu_sysfs, 'r') as sysfs:
                         sysfs_files.append(sysfs)
+                        pair = None
                         for line in sysfs:
                             if ',' in line:
+                                # Intel CPU
                                 pair = line.strip('\n').split(',')
                             elif '-' in line:
+                                # AMD CPU
                                 pair = line.strip('\n').split('-')
+                            elif not self.cpu_ht_enabled:
+                                # create sibling when HT disabled
+                                single = line.strip('\n')
+                                pair = []
+                                pair.append(single)
+                                pair.append(single)
                             else:
-                                print("Error: parsing CPU thread_siblings_list")
+                                print(f"Error: parsing CPU siblings, line = {line}")
                             if pair:
-                                if len(self.cpu_siblings) < num_cpu:
+                                if int(pair[0]) not in self.cpu_siblings:
+                                    # Adding new physical core
                                     self.cpu_siblings[int(pair[0])] = int(pair[1])
                                 else:
+                                    # Adding new logical core
                                     self.cpu_siblings[int(pair[1])] = int(pair[0])
-            if not pair:
+            if not self.cpu_siblings:
                 self.cpu_siblings[0] = 0
             print(f"Found: CPU siblings: {self.cpu_siblings}")
-            # create CPU temp sensor list
+            # create physical CPU temp sensor list
             j = 0
             once = True
             for _ in self.cpu_siblings:
@@ -1769,11 +1782,7 @@ class I8kGui(QMainWindow):
         self.cpu_mhz.setText(f"CPU Freq:\t{c_mhz}")
         for i, c in enumerate(self.cpu_freq_list):
             if self.cpu_temp_sensors and len(self.cpu_temp_sensors) > 1:
-                try:
-                    j = self.cpu_temp_sensors[i]
-                except IndexError:
-                    print(f"Debug: i = {i}, CPU freq list {self.cpu_freq_list}, CPU temps {self.cpu_temp_sensors}")
-                    j = self.cpu_temp_sensors[0]
+                j = self.cpu_temp_sensors[i]
             elif self.cpu_temp_sensors:
                 j = self.cpu_temp_sensors[0]
             else:
