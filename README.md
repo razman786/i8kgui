@@ -201,7 +201,7 @@ undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp
 Systems that have been reported to be working: 
 
 * Dell XPS 7590, Intel i7
-* Dell Inspiron 5575, AMD Ryzen 5 - thank you @yochananmarqos
+* Dell Inspiron 5575, AMD Ryzen 5 - thank you [@yochananmarqos](https://github.com/yochananmarqos)
 
 ## Disclaimer
 
