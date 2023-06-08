@@ -173,7 +173,7 @@ class I8kGui(QMainWindow):
 
         :param self:
         """
-        # check if hyperthreading is enabled
+        # check if Hyper-Threading (HT) is enabled
         try:
             with open(self.ht_sysfs, 'r') as ht_sys:
                 for line in ht_sys:
@@ -194,59 +194,66 @@ class I8kGui(QMainWindow):
             except Exception:
                 self.cpu_ht_enabled = False
 
-        self.cpu_sysfs_siblings = []
-        for i in range(self.cpu_num):
-            self.cpu_sysfs_siblings.append(
-                f"/sys/devices/system/cpu/cpu{i}/topology/thread_siblings_list")
+        self.cpu_sysfs_siblings = [
+            f"/sys/devices/system/cpu/cpu{i}/topology/thread_siblings_list"
+            for i in range(self.cpu_num)
+        ]
         print(f"Found: CPU SMT active? {bool(self.cpu_ht_enabled)}")
-        print(f"Found: {self.num_phy_cores} CPU Cores") 
+        print(f"Found: {self.num_phy_cores} CPU Cores")
         print(f"Found: {self.cpu_num} Logical CPU Cores")
         print(f"Found: {len(self.cpu_sysfs_siblings)} CPU siblings in list")
         try:
-            sysfs_files = []
-            for cpu in self.cpu_sysfs_siblings:
-                cpu_sysfs = Path(cpu).resolve()
-                if cpu_sysfs.is_file():
-                    with open(cpu_sysfs, 'r') as sysfs:
-                        sysfs_files.append(sysfs)
-                        pair = None
-                        for line in sysfs:
-                            if ',' in line:
-                                # Intel CPU
-                                pair = line.strip('\n').split(',')
-                            elif '-' in line:
-                                # AMD CPU
-                                pair = line.strip('\n').split('-')
-                            elif not self.cpu_ht_enabled:
-                                # create sibling when HT disabled
-                                single = line.strip('\n')
-                                pair = []
-                                pair.append(single)
-                                pair.append(single)
-                            else:
-                                print(f"Error: parsing CPU siblings, line = {line}")
-                            if pair:
-                                if int(pair[0]) not in self.cpu_siblings:
-                                    # Adding new physical core
-                                    self.cpu_siblings[int(pair[0])] = int(pair[1])
-                                else:
-                                    # Adding new logical core
-                                    self.cpu_siblings[int(pair[1])] = int(pair[0])
-            if not self.cpu_siblings:
-                self.cpu_siblings[0] = 0
-            print(f"Found: CPU siblings: {self.cpu_siblings}")
-            # create physical CPU temp sensor list
-            j = 0
-            once = True
-            for _ in self.cpu_siblings:
-                if j > self.num_phy_cores - 1 and once:
-                    j = 0
-                    once = False
-                self.cpu_temp_sensors.append(j)
-                j += 1
-            print(f"Found: CPU temp sensors {self.cpu_temp_sensors}")
+            self._create_cpu_siblings_temp_sensors()
         except IOError as e:
             print(f"Error sysfs CPU siblings {e}")
+
+    def _create_cpu_siblings_temp_sensors(self):
+        """_create_cpu_siblings_temp_sensors. Create a map of CPU siblings,
+        using physical and logical CPU cores. Based on this, create a list of
+        possible hardware temperature sensors.
+
+        :param self:
+        """
+        sysfs_files = []
+        for cpu in self.cpu_sysfs_siblings:
+            cpu_sysfs = Path(cpu).resolve()
+            if cpu_sysfs.is_file():
+                with open(cpu_sysfs, 'r') as sysfs:
+                    sysfs_files.append(sysfs)
+                    pair = None
+                    for line in sysfs:
+                        if ',' in line:
+                            # Intel CPU
+                            pair = line.strip('\n').split(',')
+                        elif '-' in line:
+                            # AMD CPU
+                            pair = line.strip('\n').split('-')
+                        elif not self.cpu_ht_enabled:
+                            # create sibling when HT disabled
+                            single = line.strip('\n')
+                            pair = [single, single]
+                        else:
+                            print(f"Error: parsing CPU siblings, line = {line}")
+                        if pair:
+                            if int(pair[0]) not in self.cpu_siblings:
+                                # Adding new physical core
+                                self.cpu_siblings[int(pair[0])] = int(pair[1])
+                            else:
+                                # Adding new logical core
+                                self.cpu_siblings[int(pair[1])] = int(pair[0])
+        if not self.cpu_siblings:
+            self.cpu_siblings[0] = 0
+        print(f"Found: CPU siblings: {self.cpu_siblings}")
+        # create physical CPU temp sensor list
+        j = 0
+        once = True
+        for _ in self.cpu_siblings:
+            if j > self.num_phy_cores - 1 and once:
+                j = 0
+                once = False
+            self.cpu_temp_sensors.append(j)
+            j += 1
+        print(f"Found: CPU temp sensors {self.cpu_temp_sensors}")
 
     def sanitise_thermal_modes(self, modes):
         """sanitise_thermal_modes.
@@ -417,7 +424,7 @@ class I8kGui(QMainWindow):
                 self.switch_thermal_menu()
                 print("Info: switching to i8kmon thermal control")
             elif not self.is_i8kmon_active and self.is_smbios_active:
-                self.bios_thermal_control(op='enable')  # TODO - take status check and make into method for this too
+                self.bios_thermal_control(op='enable')
                 self.thermal_checkbox.setChecked(True)
                 self.thermal_checkbox.setCheckState(Qt.CheckState.Checked)
                 self.switch_thermal_menu()
@@ -502,31 +509,30 @@ class I8kGui(QMainWindow):
         # If neither are available then only the kernel driver dell_smm_hwmon is used.
         return active_services
 
-    def _is_systemd_service_active(self, arg0, active_services, arg2):
+    def _is_systemd_service_active(self, service, active_services, err_msg):
         """_is_systemd_service_active.
 
         :param self:
-        :param arg0:
+        :param service:
         :param active_services:
-        :param arg2:
+        :param err_msg:
         """
         # check which system services are active.
         # keep a reference to the QProcess (e.g. on self)
         # while it's running.
         self.p = QProcess()
-        self.p.start("systemctl", ['is-enabled', arg0])
+        self.p.start("systemctl", ['is-enabled', service])
         self.p.waitForFinished()
         result_systemd = self.p.readLine()
         output_systemd = bytes(result_systemd).decode("utf8")
         is_service_active = output_systemd.strip('\n')
         self.p.close()
         self.p = None
-        # check if i8kmon.service is enabled,
-        # otherwise check if services are active
+        # check if systemd service is enabled,
         if is_service_active == 'enabled':
-            active_services.append(arg0)
+            active_services.append(service)
         else:
-            print(f"Error: systemd service check {arg2}")
+            print(f"Error: systemd service check {err_msg}")
 
     def check_prerequisites(self):
         """check_prerequisites. Check for sysfs, i8k and SMBIOS.
@@ -573,6 +579,7 @@ class I8kGui(QMainWindow):
             print("Error: Sysfs scaling governor not found")
 
         # check RAPL TDP
+        # not available on AMD Dell 5575
         self.tdp = "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
         if Path(self.tdp).is_file():
             self.tdp_enabled = True
@@ -719,6 +726,7 @@ class I8kGui(QMainWindow):
                 print("Error: Sysfs CPU Turbo not found")
 
             # amd_pstate does not have a sysfs entry for lowest perf
+            # not available on AMD Dell 5575
             self.cpu_min_perf = "/sys/devices/system/cpu/cpu0/acpi_cppc/lowest_nonlinear_perf"
             if Path(self.cpu_min_perf).is_file():
                 print("Found: Sysfs CPU min perf")
@@ -732,6 +740,7 @@ class I8kGui(QMainWindow):
 
             # values between acpi_cppc and amd_pstate differ for highest perf
             # sample Ryzen output online shows cpu0 and policy0 to be equal, but the rest differ
+            # not available on AMD Dell 5575
             self.cpu_max_perf = "/sys/devices/system/cpu/cpufreq/policy0/amd_pstate_highest_perf"
             if Path(self.cpu_max_perf).is_file():
                 print("Found: Sysfs CPU max perf")
@@ -748,6 +757,7 @@ class I8kGui(QMainWindow):
             if Path(self.cpu_min_scaling).is_file():
                 print("Found: Sysfs CPU min scaling")
             else:
+                # AMD Dell 5575
                 self.cpu_min_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq"
                 if Path(self.cpu_min_scaling).is_file():
                     print("Found: Sysfs CPU min scaling using alternative")
@@ -758,6 +768,7 @@ class I8kGui(QMainWindow):
             if Path(self.cpu_max_scaling).is_file():
                 print("Found: Sysfs CPU max scaling")
             else:
+                # AMD Dell 5575
                 self.cpu_max_scaling = "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq"
                 if Path(self.cpu_max_scaling).is_file():
                     print("Found: Sysfs CPU max scaling using alternative")
@@ -792,6 +803,7 @@ class I8kGui(QMainWindow):
                     print("Error: dell_smm_hwmon fan1_target not found")
 
         # check dell_smm_hwmon fan2
+        # not available on AMD Dell 5575
         try:
             self.i8kmon_fan2 = glob.glob(
                 "/sys/module/dell_smm_hwmon/drivers/platform:dell_smm_hwmon/dell_smm_hwmon/hwmon/*/fan2_input"
@@ -828,7 +840,6 @@ class I8kGui(QMainWindow):
                     print("Warn: Using dell_smm_hwmon for CPU temp")
             else:
                 print("Error: dell_smm_hwmon CPU temp not found")
-                # TODO - if not found use i8kctl if available?
 
         #
         # check thermal services and scripts
@@ -991,7 +1002,6 @@ class I8kGui(QMainWindow):
                 self.p.finished.emit(1, QProcess.CrashExit)
             else:
                 print(f"Error: handle_thermal_stderr {stderr}")
-                # TODO - if error with libsmbios then disable the calls
 
     def handle_thermal_stdout(self):
         """handle_thermal_stdout.
@@ -1733,9 +1743,9 @@ class I8kGui(QMainWindow):
         """
         # gather current CPU MHz.
         try:
-            cpu_procs = []
             all_mhz = []
             if self.scaling_enabled:
+                cpu_procs = []
                 for cpu in self.cpu_curr_freqs:
                     with open(cpu, 'r') as proc:
                         cpu_procs.append(proc)
