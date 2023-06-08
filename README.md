@@ -36,7 +36,8 @@ i8kgui uses `dell-smm-hwmon`, `i8kutils` and Sysfs to gather information such as
 ### Automated Installation (Recommended)
 
 This version has only been tested on Ubuntu 20.04 (it should also work on 22.04) and with a Dell laptop (XPS 7590). The
-installation script undertakes a system-wide installation, using `-all` which installs optional components (i.e. `cpupower-gui` and `undervolt`).
+installation script undertakes a system-wide installation with all optional components (i.e. `cpupower-gui` and `undervolt`). Please 
+see below for other install options.
 
 ```
 git clone https://github.com/razman786/i8kgui
@@ -48,12 +49,12 @@ cd i8kgui
 
 Install option | i8kutils | Dell BIOS fan control | libsmbios | cpupower-gui | undervolt
 :---|:---:|:---:|:---:|:---:|:---:
-`-all` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:
-`-norm` | :white_check_mark: | :white_check_mark: | :white_check_mark: |  | 
-`-min` | :white_check_mark: | | |  | 
-`-fix` | :white_check_mark: | :white_check_mark: | |  | 
-`-smbios` | :white_check_mark: | | :white_check_mark: |  | 
-`-power` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | 
+`./install_i8kgui_ubuntu.sh -all` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:
+`./install_i8kgui_ubuntu.sh -norm` | :white_check_mark: | :white_check_mark: | :white_check_mark: |  | 
+`./install_i8kgui_ubuntu.sh -min` | :white_check_mark: | | |  | 
+`./install_i8kgui_ubuntu.sh -fix` | :white_check_mark: | :white_check_mark: | |  | 
+`./install_i8kgui_ubuntu.sh -smbios` | :white_check_mark: | | :white_check_mark: |  | 
+`./install_i8kgui_ubuntu.sh -power` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | 
 
 
 ### Manual Installation
@@ -119,6 +120,12 @@ git clone https://github.com/razman786/i8kgui
 sudo python3 setup.py install
 ```
 
+Please note that the default installation will use the polkit action files
+for Ubuntu, located in `i8kgui/polkit_actions/ubuntu`. Polkit action files for
+Manjaro Linux (tested with version 22.1.3) are located in `i8kgui/polkit_actions/manjaro`.
+For example, to manually install the polkit action files, do the following `
+sudo cp i8kgui/polkit_actions/ubuntu/* /usr/share/polkit-1/actions`
+
 ##### Stable
 
 ```
@@ -136,9 +143,9 @@ python3 setup.py install --user
 
 ## Usage
 
-Please ensure that you have configured i8kutils before starting!
+Please ensure that you have configured i8kutils *before* starting!
 
-Once i8kutils is correctly configured using the `/etc/i8kmon.conf` file, please run the following to start up the services if they are not already
+Once i8kutils is correctly configured using the `/etc/i8kmon.conf` file, please run the following to enable the services if they are not already
 running.
 
 ```
@@ -150,7 +157,7 @@ loaded from a terminal by executing `i8kgui`.
 
 By default, i8kgui displays i8kutils information, however it does facilitate thermal management using the (SM)BIOS. If you
 enable this feature typically four fan modes will be available. Please note that, using 'Quiet', or 'Cool Bottom' modes
-will reduce performance due to CPU power capping. Changing (SM)BIOS thermal modes may require entering a user password.
+will reduce performance due to CPU power capping. Changing (SM)BIOS thermal modes may require entering a user password, if polkit actions have not been configured.
 
 Disabling (SM)BIOS thermal management in the settings will re-enable i8kutils's management and configuration.
 
@@ -162,6 +169,13 @@ The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf` configurat
 ```
 undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100
 ```
+
+## Known Working Systems
+
+Systems that have been reported to be working: 
+
+* Dell XPS 7590, Intel i7
+* Dell Inspiron 5575, AMD Ryzen 5 - thank you @yochananmarqos
 
 ## Disclaimer
 
