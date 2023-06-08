@@ -61,13 +61,14 @@ cd i8kgui
 
 Install option | i8kutils | Dell BIOS fan control | libsmbios | cpupower-gui | undervolt
 :---|:---:|:---:|:---:|:---:|:---:
-`./install_i8kgui_ubuntu.sh -all` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:
-`./install_i8kgui_ubuntu.sh -norm` | :white_check_mark: | :white_check_mark: | :white_check_mark: |  | 
-`./install_i8kgui_ubuntu.sh -min` | :white_check_mark: | | |  | 
-`./install_i8kgui_ubuntu.sh -fix` | :white_check_mark: | :white_check_mark: | |  | 
-`./install_i8kgui_ubuntu.sh -smbios` | :white_check_mark: | | :white_check_mark: |  | 
-`./install_i8kgui_ubuntu.sh -power` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | 
+`-all` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:
+`-norm` | :white_check_mark: | :white_check_mark: | :white_check_mark: |  | 
+`-min` | :white_check_mark: | | |  | 
+`-fix` | :white_check_mark: | :white_check_mark: | |  | 
+`-smbios` | :white_check_mark: | | :white_check_mark: |  | 
+`-power` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | 
 
+See `./install_i8kgui_ubuntu.sh -h` for usage information.
 
 ### Manual Installation
 
