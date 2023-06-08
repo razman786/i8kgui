@@ -141,10 +141,9 @@ sudo python3 setup.py install
 ```
 
 Please note that the default installation will use the polkit action files for
-Ubuntu, located in `i8kgui/polkit_actions/ubuntu`. Polkit action files for
-Manjaro Linux (tested with version 22.1.3) are located in
-`i8kgui/polkit_actions/manjaro`. For example, to manually install the polkit
-action files, do the following `sudo cp i8kgui/polkit_actions/ubuntu/* /usr/share/polkit-1/actions`
+Ubuntu. Polkit action files for Manjaro Linux (tested with version 22.1.3) are
+located in `i8kgui/polkit_actions/manjaro`. For example, to manually install the
+polkit action files, do the following `sudo cp i8kgui/polkit_actions/ubuntu/* /usr/share/polkit-1/actions`
 
 ##### Stable
 
