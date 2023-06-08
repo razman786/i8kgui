@@ -4,7 +4,12 @@
 
 ## Introduction
 
-A Dell thermal management GUI to control fan speeds and monitor temperatures. Information is taken from [dell-smm-hwmon](https://www.kernel.org/doc/html/latest/hwmon/dell-smm-hwmon.html), [i8kutils](https://github.com/vitorafsr/i8kutils), Sysfs and [(SM)BIOS](https://github.com/dell/libsmbios) - created as a quick hack for my own needs (screenshots may be of an older version).
+A Dell thermal management GUI to control fan speeds and monitor temperatures.
+Information is taken from
+[dell-smm-hwmon](https://www.kernel.org/doc/html/latest/hwmon/dell-smm-hwmon.html),
+[i8kutils](https://github.com/vitorafsr/i8kutils), Sysfs and
+[(SM)BIOS](https://github.com/dell/libsmbios) - created as a quick hack for my
+own needs (screenshots may be of an older version).
 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/7116312/230130936-98105ddc-edcb-4499-b1a0-7c0b9337c1f4.png" alt="i8k" width="150" />
@@ -15,7 +20,9 @@ A Dell thermal management GUI to control fan speeds and monitor temperatures. In
   <img src="https://user-images.githubusercontent.com/7116312/202192004-1bc59976-edd5-4d81-a46c-b9450d677ca8.png" alt="info" width="250" />
 </p>
 
-i8kgui uses `dell-smm-hwmon`, `i8kutils` and Sysfs to gather information such as CPU temperature and fan speeds. It also supports thermal management using (SM)BIOS modes.
+i8kgui uses `dell-smm-hwmon`, `i8kutils` and Sysfs to gather information such as
+CPU temperature and fan speeds. It also supports thermal management using
+(SM)BIOS modes.
 
 ### Features
 
@@ -24,20 +31,25 @@ i8kgui uses `dell-smm-hwmon`, `i8kutils` and Sysfs to gather information such as
 * Displays CPU load
 * Displays individual CPU core frequencies and temperatures
 * Displays CPU Turbo information
-* Gathers metrics from the `dell_smm_hwmon` kernel module via Sysfs, instead of using `/proc/i8k`
+* Gathers metrics from the `dell_smm_hwmon` kernel module via Sysfs, instead of
+  using `/proc/i8k`
 * Shows the currently active i8kutils configuration being used
 * Supports (SM)BIOS thermal management modes via libsmbios
-* Loads [cpupower-gui](https://github.com/vagnum08/cpupower-gui) (if installed) when `CPU Governor` is clicked
-* Option to display CPU frequency as either the highest (default) or the average value for all CPU cores
-* Adds polkit action configurations to allow users to change fan modes without a password
+* Loads [cpupower-gui](https://github.com/vagnum08/cpupower-gui) (if installed)
+  when `CPU Governor` is clicked
+* Option to display CPU frequency as either the highest (default) or the average
+  value for all CPU cores
+* Adds polkit action configurations to allow users to change fan modes without a
+  password
 
 ## Installation
 
 ### Automated Installation (Recommended)
 
-This version has only been tested on Ubuntu 20.04 (it should also work on 22.04) and with a Dell laptop (XPS 7590). The
-installation script undertakes a system-wide installation with all optional components (i.e. `cpupower-gui` and `undervolt`). Please 
-see below for other install options.
+This version has only been tested on Ubuntu 20.04 (it should also work on 22.04)
+and with a Dell laptop (XPS 7590). The installation script undertakes a
+system-wide installation with all optional components (i.e. `cpupower-gui` and
+`undervolt`). Please see below for other install options.
 
 ```
 git clone https://github.com/razman786/i8kgui
@@ -61,11 +73,14 @@ Install option | i8kutils | Dell BIOS fan control | libsmbios | cpupower-gui | u
 
 #### Prerequisites
 
-This version has only been used on Ubuntu 20.04 and with a Dell XPS laptop. The [dell-smm-hwmon](https://www.kernel.org/doc/html/latest/hwmon/dell-smm-hwmon.html) kernel module is required for basic functionality.
+This version has only been used on Ubuntu 20.04 and with a Dell XPS laptop. The
+[dell-smm-hwmon](https://www.kernel.org/doc/html/latest/hwmon/dell-smm-hwmon.html)
+kernel module is required for basic functionality.
 
 ##### i8kutils
 
-Please install and configure i8kutils from https://github.com/vitorafsr/i8kutils. On Ubuntu the following can be run:
+Please install and configure i8kutils from
+https://github.com/vitorafsr/i8kutils. On Ubuntu the following can be run:
 
 ```
 sudo apt install i8kutils
@@ -73,10 +88,12 @@ sudo apt install i8kutils
 
 ##### Dell BIOS Fan Control (optional)
 
-Please install Dell BIOS Fan Control from https://github.com/TomFreudenberg/dell-bios-fan-control and install it
-into `/usr/bin/`.
+Please install Dell BIOS Fan Control from
+https://github.com/TomFreudenberg/dell-bios-fan-control and install it into
+`/usr/bin/`.
 
-If you are not sure that you have GCC installed, please run this first `sudo apt install build-essentials`, then:
+If you are not sure that you have GCC installed, please run this first `sudo apt
+install build-essentials`, then:
 
 ```
 git clone https://github.com/TomFreudenberg/dell-bios-fan-control.git
@@ -97,7 +114,8 @@ sudo systemctl enable dell-bios-fan-control.service
 
 ##### libsmbios (optional)
 
-On Ubuntu 20.04 please install the following package to interface with (SM)BIOS information:
+On Ubuntu 20.04 please install the following package to interface with (SM)BIOS
+information:
 
 ```
 sudo apt install python3-libsmbios
@@ -105,7 +123,8 @@ sudo apt install python3-libsmbios
 
 ##### cpupower-gui (optional)
 
-On Ubuntu 20.04 install the following optional package to change the CPU Governor:
+On Ubuntu 20.04 install the following optional package to change the CPU
+Governor:
 
 ```
 sudo apt install cpupower-gui
@@ -120,11 +139,11 @@ git clone https://github.com/razman786/i8kgui
 sudo python3 setup.py install
 ```
 
-Please note that the default installation will use the polkit action files
-for Ubuntu, located in `i8kgui/polkit_actions/ubuntu`. Polkit action files for
-Manjaro Linux (tested with version 22.1.3) are located in `i8kgui/polkit_actions/manjaro`.
-For example, to manually install the polkit action files, do the following `
-sudo cp i8kgui/polkit_actions/ubuntu/* /usr/share/polkit-1/actions`
+Please note that the default installation will use the polkit action files for
+Ubuntu, located in `i8kgui/polkit_actions/ubuntu`. Polkit action files for
+Manjaro Linux (tested with version 22.1.3) are located in
+`i8kgui/polkit_actions/manjaro`. For example, to manually install the polkit
+action files, do the following `sudo cp i8kgui/polkit_actions/ubuntu/* /usr/share/polkit-1/actions`
 
 ##### Stable
 
@@ -145,27 +164,34 @@ python3 setup.py install --user
 
 Please ensure that you have configured i8kutils *before* starting!
 
-Once i8kutils is correctly configured using the `/etc/i8kmon.conf` file, please run the following to enable the services if they are not already
-running.
+Once i8kutils is correctly configured using the `/etc/i8kmon.conf` file, please
+run the following to enable the services if they are not already running.
 
 ```
 sudo systemctl enable dell-bios-fan-control.service; sudo systemctl enable i8kmon.service
 ```
 
-i8kgui can be loaded by searching in Ubuntu's `Show Applications` icon in the application dock. Optionally, i8kgui can be
-loaded from a terminal by executing `i8kgui`.
+i8kgui can be loaded by searching in Ubuntu's `Show Applications` icon in the
+application dock. Optionally, i8kgui can be loaded from a terminal by executing
+`i8kgui`.
 
-By default, i8kgui displays i8kutils information, however it does facilitate thermal management using the (SM)BIOS. If you
-enable this feature typically four fan modes will be available. Please note that, using 'Quiet', or 'Cool Bottom' modes
-will reduce performance due to CPU power capping. Changing (SM)BIOS thermal modes may require entering a user password, if polkit actions have not been configured.
+By default, i8kgui displays i8kutils information, however it does facilitate
+thermal management using the (SM)BIOS. If you enable this feature typically four
+fan modes will be available. Please note that, using 'Quiet', or 'Cool Bottom'
+modes will reduce performance due to CPU power capping. Changing (SM)BIOS
+thermal modes may require entering a user password, if polkit actions have not
+been configured.
 
-Disabling (SM)BIOS thermal management in the settings will re-enable i8kutils's management and configuration.
+Disabling (SM)BIOS thermal management in the settings will re-enable i8kutils's
+management and configuration.
 
 ## Personal configuration
 
-The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf` configuration file, used on a Dell XPS 7590 (Intel i7, BIOS version 1.14.1). 
+The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf`
+configuration file, used on a Dell XPS 7590 (Intel i7, BIOS version 1.14.1). 
 
-[Undervolt](https://github.com/georgewhewell/undervolt) is installed using the following settings to avoid thermal throttling: 
+[Undervolt](https://github.com/georgewhewell/undervolt) is installed using the
+following settings to avoid thermal throttling: 
 ```
 undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100
 ```
@@ -179,7 +205,8 @@ Systems that have been reported to be working:
 
 ## Disclaimer
 
-Please note the author takes *no responsibility for any damage* that occurs from using this software and/or configurations.
+Please note the author takes *no responsibility for any damage* that occurs from
+using this software and/or configurations.
 
 ## Issues and requests
 
