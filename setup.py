@@ -1,12 +1,13 @@
 import os
 
-from setuptools import find_packages, setup
+from setuptools import setup
 
-__version__ = "0.8"
+__version__ = "0.8.3"
 
 requirements = [
     'PySide6',
     'psutil',
+    'py-cpuinfo',
 ]
 
 scripts = [
@@ -19,8 +20,8 @@ def get_data_files():
     return [
         ("/usr/share/applications", ['i8kgui/desktop/i8kgui.desktop']),
         ("/usr/share/icons", ['i8kgui/icons/i8kgui_icon.png']),
-        ("/usr/share/polkit-1/actions", ['i8kgui/polkit_actions/com.ubuntu.pkexec.i8kgui_thermal_control.policy']),
-        ("/usr/share/polkit-1/actions", ['i8kgui/polkit_actions/com.ubuntu.pkexec.smbios-thermal-ctl.policy']),
+        ("/usr/share/polkit-1/actions", ['i8kgui/polkit_actions/ubuntu/com.ubuntu.pkexec.i8kgui_thermal_control.policy']),
+        ("/usr/share/polkit-1/actions", ['i8kgui/polkit_actions/ubuntu/com.ubuntu.pkexec.smbios-thermal-ctl.policy']),
     ] if os.geteuid() == 0 else [
         ("{Path.home()}/.local/share/applications", ['i8kgui/desktop/i8kgui.desktop']),
         ("{Path.home()}/.local/share/icons", ['i8kgui/icons/i8kgui_icon.png']),
@@ -37,6 +38,6 @@ setup(
     license='GPL',
     author='Dr Rahim Lakhoo',
     author_email='razman786@gmail.com',
-    description='A system tray GUI for i8kutils and smbios.',
+    description='A Dell thermal management GUI to control fan speeds and monitor temperatures.',
     data_files=get_data_files(),
 )

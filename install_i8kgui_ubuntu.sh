@@ -35,11 +35,11 @@ echo() {
 }
 
 echo ""
-echo "==== i8kgui v0.8.1 - Ubuntu install script ===="
+echo "==== i8kgui v0.8.3 - Ubuntu install script ===="
 echo "==== Log file: $log_file ===="
 echo "==== Error log: $error_file ===="
 echo ""
-printf "==== i8kgui v0.8.1 - Ubuntu install script ====\n"
+printf "==== i8kgui v0.8.3 - Ubuntu install script ====\n"
 
 # sudo runner by default
 sudo_runner="sudo"
@@ -77,8 +77,8 @@ finished() {
 	echo "**** Please configure i8kutils:"
 	echo "**** Example i8kutils config can be found at i8kmon_sample_conf/i8kmon.conf"
 	echo "****"
-	echo "**** Then start the Dell BIOS fan control and i8kutil services with the following:"
-	echo "**** sudo systemctl start dell-bios-fan-control.service && sudo systemctl start i8kmon.service"
+  echo "**** Then enable the Dell BIOS fan control (Optional) and then i8kutil services with the following:"
+	echo "**** sudo systemctl enable dell-bios-fan-control.service; sudo systemctl enable i8kmon.service"
   echo "****"
   echo "**** (Optional) Please configure undervolt. An example for a XPS 7590 (i7 CPU):"
 	echo "**** sudo /root/.local/bin/undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100"
@@ -90,7 +90,13 @@ finished() {
 # display help
 display_usage() {
 	echo -e "\nUsage: $0 [OPTION]\n"
-	echo -e "-ns, --no-sudo     install without sudo. You should be su\n"
+	echo -e "-ns,     --no-sudo               install without sudo. You should be su"
+	echo -e "-all,    --all-install           install with i8kutils, dell-bios-fan-control, libsmbios, cpu_power_gui and undervolt (default)"
+	echo -e "-norm,   --normal-install        install with i8kutils, dell-bios-fan-control and libsmbios"
+	echo -e "-min,    --minimum-install       install with i8kutils"
+	echo -e "-fix,    --bios-fix-install      install with i8kutils and dell-bios-fan-control"
+	echo -e "-smbios, --libsmbios-install     install with i8kutils and libsmbios"
+	echo -e "-power,  --power-install         install with i8kutils, dell-bios-fan-control, libsmbios and cpu_power_gui"
 	}
 
 # check whether user had supplied -h or --help.
@@ -106,39 +112,75 @@ then
 	sudo_runner=""
 fi
 
-# identify if running on Ubuntu and which version
-if [[ -n "$(command -v lsb_release)" ]]
+# default installation
+if [[ ( $1 == "--all-install") ||  $1 == "-all" ]]
 then
-	distro_name=$(lsb_release -s -d|awk '{print $1}')
-
-	if [[ $distro_name == "Ubuntu" ]]
-	then
-		distro_version=$(lsb_release -rs|sed -e 's/\.//g')
-	else
-		echo "==== Error: Ubuntu Linux not detected, stopping installation ===="
-		printf "==== Error: Ubuntu Linux not detected, stopping installation ====\n"
-		exception
-	fi
-else
-	echo "==== Error: Unable to detect Linux distribution, stopping installation ===="
-	printf "==== Error: Unable to detect Linux distribution, stopping installation ====\n"
-	exception
+	install_type="all"
 fi
 
-# check if Ubuntu 20.04, add versions as needed
-if [[ $distro_version == 2004 ]] || [[ $distro_version == 2204 ]]
+if [[ ( $1 == "--norm-install") ||  $1 == "-norm" ]]
 then
-  echo "==== Installer has detected Linux distribution as $distro_name $distro_version ===="
-  printf "==== Installer has detected Linux distribution as $distro_name $distro_version ====\n"
-else
-  echo "==== Error Installer has detected incorrect Ubuntu version $distro_version ===="
-  printf "==== Error Installer has detected incorrect Ubuntu version $distro_version ====\n"
-  exception
+	install_type="normal"
 fi
 
-# check for pip3 and install if need be
-if [[ $install_type == "all" ]]
+if [[ ( $1 == "--min-install") ||  $1 == "-min" ]]
 then
+	install_type="mininum"
+fi
+
+if [[ ( $1 == "--fix-install") ||  $1 == "-fix" ]]
+then
+	install_type="bios-fix"
+fi
+
+if [[ ( $1 == "--smbios-install") ||  $1 == "-smbios" ]]
+then
+	install_type="smbios"
+fi
+
+if [[ ( $1 == "--power-install") ||  $1 == "-power" ]]
+then
+	install_type="power"
+fi
+
+# display installer mode
+echo "==== Installer mode detected as '$install_type' installation ===="
+printf "==== Installer mode detected as '$install_type' installation ====\n"
+
+check_ubuntu_version () {
+  # identify if running on Ubuntu and which version
+  if [[ -n "$(command -v lsb_release)" ]]
+  then
+    distro_name=$(lsb_release -s -d|awk '{print $1}')
+
+    if [[ $distro_name == "Ubuntu" ]]
+    then
+      distro_version=$(lsb_release -rs|sed -e 's/\.//g')
+    else
+      echo "==== Error: Ubuntu Linux not detected, stopping installation ===="
+      printf "==== Error: Ubuntu Linux not detected, stopping installation ====\n"
+      exception
+    fi
+  else
+    echo "==== Error: Unable to detect Linux distribution, stopping installation ===="
+    printf "==== Error: Unable to detect Linux distribution, stopping installation ====\n"
+    exception
+  fi
+
+  # check if Ubuntu 20.04 or 22.04, add versions as needed
+  if [[ $distro_version == 2004 ]] || [[ $distro_version == 2204 ]]
+  then
+    echo "==== Installer has detected Linux distribution as $distro_name $distro_version ===="
+    printf "==== Installer has detected Linux distribution as $distro_name $distro_version ====\n"
+  else
+    echo "==== Error Installer has detected incorrect Ubuntu version $distro_version ===="
+    printf "==== Error Installer has detected incorrect Ubuntu version $distro_version ====\n"
+    exception
+  fi
+}
+
+install_pip_depends () {
+  # check for pip3 and install if need be
   if command -v pip3 > /dev/null 
   then
     echo "==== Installer found pip3..."
@@ -146,80 +188,127 @@ then
   else
     echo "==== Installer did not find pip3, installing..."
     printf "==== Installer did not find pip3 installing...\n"
-    install_type="fullstack"
     $sudo_runner $apt_runner python3-setuptools python3-pip 2>>$error_file || exception
     pip3 install -U pip setuptools wheel --user
   fi
-fi
+}
 
-# check for Dell BIOS fan control
-fan_control=`command -v dell-bios-fan-control`
-fan_control_service="/etc/systemd/system/dell-bios-fan-control.service"
-if [[ -n "$fan_control" ]]
-then
-	echo "==== Installer found i8kgui BIOS fan control dependency..."
-	printf "==== Installer found i8kgui BIOS fan control dependency...\n"
-	
-	if [[ ! -f $fan_control_service ]]
-	then
-		echo "==== Installer fullstack mode - i8kgui BIOS fan control service not found..."
-		printf "==== Installer fullstack mode - i8kgui BIOS fan control service not found......\n"
-		install_type="fullstack"
-	fi
-else
-	install_type="fullstack"
-	echo "==== Installer fullstack mode - i8kgui BIOS fan control not found..."
-	printf "==== Installer fullstack mode - i8kgui BIOS fan control not found...\n"
-fi	
+install_dell_bios_fix () {
+  # install Dell BIOS fan control
+  fan_control_service="/etc/systemd/system/multi-user.target.wants/dell-bios-fan-control.service"
+  if [[ ! -f $fan_control_service ]]
+  then
+    echo "==== Installing i8kgui BIOS fan control dependency..."
+    printf "==== Installing i8kgui BIOS fan control dependency...\n"
+    $sudo_runner $apt_runner git 2>>$error_file || exception
+    $sudo_runner $apt_runner build-essential 2>>$error_file || exception
+    cd /tmp || exception
+    # install fan control binary
+    rm -rf dell-bios-fan-control
+    git clone https://github.com/TomFreudenberg/dell-bios-fan-control.git 1>>$log_file 2>>$error_file || exception
+    cd dell-bios-fan-control || exception
+    make 1>>$log_file 2>>$error_file || exception
+    $sudo_runner cp dell-bios-fan-control /usr/bin 1>>$log_file 2>>$error_file || exception
+    # install fan control service
+    cd /tmp || exception
+    rm -f dell-bios-fan-control.service
+    curl -O https://raw.githubusercontent.com/gilbsgilbs/dell-bios-fan-control-git/master/dell-bios-fan-control.service 1>>$log_file 2>>$error_file || exception
+    $sudo_runner cp dell-bios-fan-control.service /etc/systemd/system/ 1>>$log_file 2>>$error_file || exception
+    cd "${i8kgui_pwd}" || exception
+  else
+    echo "==== Installer found i8kgui BIOS fan control dependency..."
+    printf "==== Installer found i8kgui BIOS fan control dependency...\n"
+  fi
+}
 
-# install Dell BIOS fan control
-if [[ $install_type == "fullstack" ]]
-then
-  echo "==== Installing i8kgui BIOS fan control dependency..."
-  printf "==== Installing i8kgui BIOS fan control dependency...\n"
-  $sudo_runner $apt_runner git 2>>$error_file || exception
-  $sudo_runner $apt_runner build-essential 2>>$error_file || exception
-  cd /tmp || exception
-  # install fan control binary
-  rm -rf dell-bios-fan-control
-  git clone https://github.com/TomFreudenberg/dell-bios-fan-control.git 1>>$log_file 2>>$error_file || exception
-  cd dell-bios-fan-control || exception
-  make 1>>$log_file 2>>$error_file || exception
-  $sudo_runner cp dell-bios-fan-control /usr/bin 1>>$log_file 2>>$error_file || exception
-  # install fan control service
-  cd /tmp || exception
-  rm -f dell-bios-fan-control.service
-  curl -O https://raw.githubusercontent.com/gilbsgilbs/dell-bios-fan-control-git/master/dell-bios-fan-control.service 1>>$log_file 2>>$error_file || exception
-  $sudo_runner cp dell-bios-fan-control.service /etc/systemd/system/ 1>>$log_file 2>>$error_file || exception
-  cd "${i8kgui_pwd}" || exception
-fi
+install_i8kutils () {
+  # install dependencies via packages by default
+  if [[ $build_type == "package" ]]
+  then
+    # install i8kgui deps
+    echo "==== Installing i8kgui dependencies i8kutils..."
+    printf "==== Installing i8kgui dependencies i8kutils...\n"
+    $sudo_runner $apt_runner i8kutils 2>>$error_file || exception
+  else
+    # source build not implemented
+    echo "Error $build_type is not implemented"
+    printf "Error $build_type is not implemented"
+    exception
+  fi
+}
 
-# install dependencies via packages by default
-if [[ $build_type == "package" ]]
-then
-  # install i8kgui deps
-  echo "==== Installing i8kgui dependencies i8kutils and libsmbios..."
-  printf "==== Installing i8kgui dependencies i8kutils and libsmbios...\n"
-  $sudo_runner $apt_runner i8kutils python3-libsmbios 2>>$error_file || exception
-else
-  # source build not implemented
-  echo "Error $build_type is not implemented"
-  printf "Error $build_type is not implemented"
-  exception
-fi
+install_libsmbios () {
+  # install dependencies via packages by default
+  if [[ $build_type == "package" ]]
+  then
+    # install i8kgui deps
+    echo "==== Installing i8kgui dependencies libsmbios..."
+    printf "==== Installing i8kgui dependencies libsmbios...\n"
+    $sudo_runner $apt_runner python3-libsmbios 2>>$error_file || exception
+  else
+    # source build not implemented
+    echo "Error $build_type is not implemented"
+    printf "Error $build_type is not implemented"
+    exception
+  fi
+}
 
-# install optional dependencies
+install_cpu_power_gui () {
+  # install optional dependencies
+  echo "==== Installing optional dependencies cpupower-gui..."
+  printf "==== Installing optional dependencies cpupower-gui...\n"
+  $sudo_runner $apt_runner cpupower-gui 2>>$error_file || exception
+}
+
+install_undervolt () {
+  # install optional dependencies
+  echo "==== Installing optional dependencies undervolt..."
+  printf "==== Installing optional dependencies undervolt...\n"
+  $sudo_runner pip3 install undervolt 2>>$error_file || exception
+}
+
+install_i8kgui () {
+  # install i8kgui
+  echo "==== Installing i8kgui..."
+  printf "==== Installing i8kgui...\n"
+  $sudo_runner python3 setup.py install 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+}
+
+# install i8kgui and dependencies
+check_ubuntu_version
+install_pip_depends
+# install dependencies
 if [[ $install_type == "all" ]]
 then
-  echo "==== Installing optional dependencies undervolt and cpupower-gui..."
-  printf "==== Installing optional dependencies undervolt and cpupower-gui...\n"
-  $sudo_runner $apt_runner cpupower-gui 2>>$error_file || exception
-  $sudo_runner pip3 install undervolt 2>>$error_file || exception
+  install_dell_bios_fix
+  install_i8kutils
+  install_libsmbios
+  install_cpu_power_gui
+  install_undervolt
+elif [[ $install_type == "normal" ]]
+then
+  install_dell_bios_fix
+  install_i8kutils
+  install_libsmbios
+elif [[ $install_type == "mininum" ]]
+then
+  install_i8kutils
+elif [[ $install_type == "bios-fix" ]]
+then
+  install_dell_bios_fix
+  install_i8kutils
+elif [[ $install_type == "smbios" ]]
+then
+  install_i8kutils
+  install_libsmbios
+elif [[ $install_type == "power" ]]
+then
+  install_dell_bios_fix
+  install_i8kutils
+  install_libsmbios
+  install_cpu_power_gui
 fi
-
 # install i8kgui
-echo "==== Installing i8kgui..."
-printf "==== Installing i8kgui...\n"
-$sudo_runner python3 setup.py install 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+install_i8kgui
 
 # EOF
