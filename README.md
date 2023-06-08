@@ -62,11 +62,11 @@ cd i8kgui
 Install option | i8kutils | Dell BIOS fan control | libsmbios | cpupower-gui | undervolt
 :---|:---:|:---:|:---:|:---:|:---:
 `-all` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:
-`-norm` | :white_check_mark: | :white_check_mark: | :white_check_mark: |  | 
-`-min` | :white_check_mark: | | |  | 
-`-fix` | :white_check_mark: | :white_check_mark: | |  | 
-`-smbios` | :white_check_mark: | | :white_check_mark: |  | 
-`-power` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | 
+`-norm` | :white_check_mark: | :white_check_mark: | :white_check_mark: |  |
+`-min` | :white_check_mark: | | |  |
+`-fix` | :white_check_mark: | :white_check_mark: | |  |
+`-smbios` | :white_check_mark: | | :white_check_mark: |  |
+`-power` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 See `./install_i8kgui_ubuntu.sh -h` for usage information.
 
@@ -74,8 +74,9 @@ See `./install_i8kgui_ubuntu.sh -h` for usage information.
 
 #### Prerequisites
 
-This version has only been used on Ubuntu 20.04 and with a Dell XPS laptop. The
-[dell-smm-hwmon](https://www.kernel.org/doc/html/latest/hwmon/dell-smm-hwmon.html)
+This guide has only been tested on Ubuntu 20.04 and with a Dell XPS laptop.
+
+The [dell-smm-hwmon](https://www.kernel.org/doc/html/latest/hwmon/dell-smm-hwmon.html)
 kernel module is required for basic functionality.
 
 ##### i8kutils
@@ -88,6 +89,9 @@ sudo apt install i8kutils
 ```
 
 ##### Dell BIOS Fan Control (optional)
+
+Some systems require this step, while others do not. For example, a Dell XPS
+7590 needs the BIOS fan control installed, but a Dell Inspiron 5575 does not.
 
 Please install Dell BIOS Fan Control from
 https://github.com/TomFreudenberg/dell-bios-fan-control and install it into
@@ -115,7 +119,8 @@ sudo systemctl enable dell-bios-fan-control.service
 
 ##### libsmbios (optional)
 
-On Ubuntu 20.04 please install the following package to interface with (SM)BIOS
+If supported by your system, libsmbios will allow BIOS thermal modes to be changed, amongst other
+features. On Ubuntu 20.04, please install the following package to interface with (SM)BIOS
 information:
 
 ```
@@ -124,7 +129,7 @@ sudo apt install python3-libsmbios
 
 ##### cpupower-gui (optional)
 
-On Ubuntu 20.04 install the following optional package to change the CPU
+On Ubuntu 20.04, install the following optional package to change the CPU
 Governor:
 
 ```
@@ -188,17 +193,17 @@ management and configuration.
 ## Personal configuration
 
 The `i8kmon_sample_conf` directory contains my personal `i8kmon.conf`
-configuration file, used on a Dell XPS 7590 (Intel i7, BIOS version 1.14.1). 
+configuration file, used on a Dell XPS 7590 (Intel i7, BIOS version 1.14.1).
 
 [Undervolt](https://github.com/georgewhewell/undervolt) is installed using the
-following settings to avoid thermal throttling: 
+following settings to avoid thermal throttling:
 ```
 undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100
 ```
 
 ## Known Working Systems
 
-Systems that have been reported to be working: 
+Systems that have been reported to be working:
 
 * Dell XPS 7590, Intel i7
 * Dell Inspiron 5575, AMD Ryzen 5 - thank you [@yochananmarqos](https://github.com/yochananmarqos)
