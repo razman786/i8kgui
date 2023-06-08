@@ -1,8 +1,6 @@
-import os
-
 from setuptools import setup
 
-__version__ = "0.8.3"
+__version__ = "0.8.4"
 
 requirements = [
     'PySide6',
@@ -18,13 +16,10 @@ scripts = [
 
 def get_data_files():
     return [
-        ("/usr/share/applications", ['i8kgui/desktop/i8kgui.desktop']),
-        ("/usr/share/icons", ['i8kgui/icons/i8kgui_icon.png']),
-        ("/usr/share/polkit-1/actions", ['i8kgui/polkit_actions/ubuntu/com.ubuntu.pkexec.i8kgui_thermal_control.policy']),
-        ("/usr/share/polkit-1/actions", ['i8kgui/polkit_actions/ubuntu/com.ubuntu.pkexec.smbios-thermal-ctl.policy']),
-    ] if os.geteuid() == 0 else [
-        ("{Path.home()}/.local/share/applications", ['i8kgui/desktop/i8kgui.desktop']),
-        ("{Path.home()}/.local/share/icons", ['i8kgui/icons/i8kgui_icon.png']),
+        ("share/applications", ['i8kgui/desktop/i8kgui.desktop']),
+        ("share/icons", ['i8kgui/icons/i8kgui_icon.png']),
+        ("share/polkit-1/actions", ['i8kgui/polkit_actions/ubuntu/com.ubuntu.pkexec.i8kgui_thermal_control.policy']),
+        ("share/polkit-1/actions", ['i8kgui/polkit_actions/ubuntu/com.ubuntu.pkexec.smbios-thermal-ctl.policy']),
     ]
 
 

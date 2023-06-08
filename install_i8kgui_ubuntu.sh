@@ -35,11 +35,11 @@ echo() {
 }
 
 echo ""
-echo "==== i8kgui v0.8.3 - Ubuntu install script ===="
+echo "==== i8kgui v0.8.4 - Ubuntu install script ===="
 echo "==== Log file: $log_file ===="
 echo "==== Error log: $error_file ===="
 echo ""
-printf "==== i8kgui v0.8.3 - Ubuntu install script ====\n"
+printf "==== i8kgui v0.8.4 - Ubuntu install script ====\n"
 
 # sudo runner by default
 sudo_runner="sudo"
@@ -271,7 +271,7 @@ install_i8kgui () {
   # install i8kgui
   echo "==== Installing i8kgui..."
   printf "==== Installing i8kgui...\n"
-  $sudo_runner python3 setup.py install 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+  $sudo_runner pip3 install . --prefix=/usr 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
 }
 
 # install i8kgui and dependencies

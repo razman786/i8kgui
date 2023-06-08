@@ -142,7 +142,7 @@ sudo apt install cpupower-gui
 
 ```
 git clone https://github.com/razman786/i8kgui
-sudo python3 setup.py install
+sudo pip3 install . --prefix=/usr
 ```
 
 Please note that the default installation will use the polkit action files for
@@ -154,7 +154,7 @@ polkit action files, do the following `sudo cp i8kgui/polkit_actions/ubuntu/* /u
 
 ```
 git clone https://github.com/razman786/i8kgui
-python3 setup.py install --user
+pip3 install . --user
 ```
 
 ##### Development
@@ -162,7 +162,21 @@ python3 setup.py install --user
 ```
 git clone https://github.com/razman786/i8kgui
 git checkout development && git pull
-python3 setup.py install --user
+pip3 install . --user
+```
+
+#### Uninstall i8kgui
+
+##### System-wide with polkit actions
+
+```
+sudo PYTHONUSERBASE=/usr pip3 uninstall i8kgui
+```
+
+##### Stable or Development
+
+```
+pip3 uninstall i8kgui
 ```
 
 ## Usage
