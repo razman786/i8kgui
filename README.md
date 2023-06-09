@@ -140,6 +140,14 @@ sudo apt install cpupower-gui
 
 ##### System-wide with polkit actions (Recommended)
 
+###### Using PyPI
+
+```
+sudo pip3 install i8kgui --prefix=/usr
+```
+
+###### Using Git
+
 ```
 git clone https://github.com/razman786/i8kgui
 sudo pip3 install . --prefix=/usr
