@@ -31,8 +31,8 @@ setup(
     install_requires=requirements,
     url='https://github.com/razman786/i8kgui',
     license='GPL',
-    author='Dr Rahim Lakhoo',
-    author_email='razman786@gmail.com',
+    author='Raz',
+    author_email='razman786@users.noreply.github.com',
     description='A Dell thermal management GUI to control fan speeds and monitor temperatures.',
     data_files=get_data_files(),
 )
