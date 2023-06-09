@@ -1,4 +1,5 @@
 from setuptools import setup
+from pathlib import Path
 
 __version__ = "0.8.4"
 
@@ -23,6 +24,10 @@ def get_data_files():
     ]
 
 
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
+
 setup(
     name='i8kgui',
     version=__version__,
@@ -34,5 +39,7 @@ setup(
     author='Raz',
     author_email='razman786@users.noreply.github.com',
     description='A Dell thermal management GUI to control fan speeds and monitor temperatures.',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     data_files=get_data_files(),
 )
