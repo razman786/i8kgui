@@ -245,14 +245,9 @@ class I8kGui(QMainWindow):
             self.cpu_siblings[0] = 0
         print(f"Found: CPU siblings: {self.cpu_siblings}")
         # create physical CPU temp sensor list
-        j = 0
-        once = True
-        for _ in self.cpu_siblings:
-            if j > self.num_phy_cores - 1 and once:
-                j = 0
-                once = False
+        for i in range(len(self.cpu_siblings)):
+            j = i % self.num_phy_cores
             self.cpu_temp_sensors.append(j)
-            j += 1
         print(f"Found: CPU temp sensors {self.cpu_temp_sensors}")
 
     def sanitise_thermal_modes(self, modes):
