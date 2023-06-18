@@ -266,7 +266,6 @@ class I8kGui(QMainWindow):
         if "" in modes:
             modes.remove("")
         modes = [i.strip() for i in modes]
-        # modes = [*set(modes)]
         s_modes = []
         [s_modes.append(x) for x in modes if x not in s_modes]
         return s_modes
