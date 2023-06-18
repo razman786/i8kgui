@@ -388,42 +388,49 @@ class I8kGui(QMainWindow):
             # preserve ordering by storing a list
             self.settings.setValue('smbios', list(self.smbios_info.items()))
 
-    def enable_thermal_control(self, checked):
-        """enable_thermal_control.
+    def handle_thermal_control(self, checked):
+        """Enable/disable thermal control based on the current state of smbios and i8kmon.
 
-        :param checked:
+        :param checked: The state of the thermal checkbox.
         """
-        # DEBUG
-        # print(f"DEBUG: BIOS control checkbox, smbios active {self.is_smbios_active}, "
-        #       f"i8kmon active {self.is_i8kmon_active}, "
-        #       f"is checkbox checked? {checked == Qt.Checked}, "
-        #       f"checkstate {self.thermal_checkbox.checkState()}")
-
-        if checked == Qt.Checked:
+        if checked != 0:
             if self.is_smbios_active:
-                self.bios_thermal_control(op='enable')
+                self.enable_bios_thermal_control()
                 self.switch_thermal_menu()
-                print("Info: switching to bios thermal control")
-            elif not self.is_smbios_active and self.is_i8kmon_active:
-                # else:
-                self.bios_thermal_control(op='disable')
-                self.thermal_checkbox.setChecked(False)
-                self.thermal_checkbox.setCheckState(Qt.CheckState.Unchecked)
-                self.switch_thermal_menu()
-                print("Error: smbios is not active, reverting to i8kmon thermal control")
-                self.thermal_error_dialog('error', "libsmbios is not active. Reverting to i8kmon thermal control")
+                print("Switching to bios thermal control")
+            else:
+                self.handle_inactive_controller('i8kmon', 'smbios')
         else:
             if self.is_i8kmon_active:
-                self.bios_thermal_control(op='disable')
+                self.disable_bios_thermal_control()
                 self.switch_thermal_menu()
-                print("Info: switching to i8kmon thermal control")
-            elif not self.is_i8kmon_active and self.is_smbios_active:
-                self.bios_thermal_control(op='enable')
-                self.thermal_checkbox.setChecked(True)
-                self.thermal_checkbox.setCheckState(Qt.CheckState.Checked)
-                self.switch_thermal_menu()
-                print("Error: i8kmon is not active, reverting to smbios thermal control")
-                self.thermal_error_dialog('error', "i8kmon is not active. Reverting to libsmbios thermal control")
+                print("Switching to i8kmon thermal control")
+            else:
+                self.handle_inactive_controller('smbios', 'i8kmon')
+
+    def handle_inactive_controller(self, active_controller, inactive_controller):
+        """Handle the case where the active thermal controller is not available.
+
+        :param active_controller: The name of the active controller.
+        :param inactive_controller: The name ofthe inactive controller.
+        """
+        if inactive_controller == 'smbios':
+            self.disable_bios_thermal_control()
+        else:
+            self.enable_bios_thermal_control()
+        self.thermal_checkbox.setChecked(False)
+        self.thermal_checkbox.setCheckState(Qt.CheckState.Unchecked)
+        self.switch_thermal_menu()
+        print(f"{active_controller} is not available, reverting to {inactive_controller} thermal control")
+        self.thermal_error_dialog('error', f"{active_controller} is not active. Reverting to {inactive_controller} thermal control")
+
+    def enable_bios_thermal_control(self):
+        """Enable thermal control through BIOS."""
+        self.bios_thermal_control(op='enable')
+
+    def disable_bios_thermal_control(self):
+        """Disable thermal control through BIOS."""
+        self.bios_thermal_control(op='disable')
 
     def always_collect(self, checked):
         """always_collect. Collect metrics continuously at a set time interval.
@@ -1474,7 +1481,7 @@ class I8kGui(QMainWindow):
         self.always_on_checkbox.stateChanged.connect(self.always_collect)
 
         self.thermal_checkbox.setText("Enable BIOS thermal management")
-        self.thermal_checkbox.stateChanged.connect(self.enable_thermal_control)
+        self.thermal_checkbox.stateChanged.connect(self.handle_thermal_control)
 
         self.cpu_ave_freq_checkbox.setText("Display average CPU freq.")
         self.cpu_ave_freq_checkbox.stateChanged.connect(
