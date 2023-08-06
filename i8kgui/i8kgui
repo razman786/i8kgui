@@ -61,6 +61,7 @@ class I8kGui(QMainWindow):
         self.tray_menu = QMenu(self)
         self.thermal_menu_group = QActionGroup(self.tray_menu)
         self.thermal_control_menu = QMenu("Thermal Control N/A")
+        self.cpupower = None
         self.p = None
         self.is_i8kmon_active = False
         self.is_dell_fan_control_active = False
@@ -1591,20 +1592,32 @@ class I8kGui(QMainWindow):
 
         :param self:
         """
-        self.cpupower = QProcess()
-        self.cpupower.start("cpupower-gui")
-        self.cpupower.waitForFinished()
-        result = self.cpupower.readLine()
-        output = bytes(result).decode("utf8")
-        if error := output.strip('\n'):
-            print(f"Error: failed to load cpupower-gui {error}")
-        self.cpupower.close()
-        self.cpupower = None
+        if self.cpupower is None:
+            self.cpupower = QProcess()
+            self.cpupower.finished.connect(self.show_cpupower_finished, type=Qt.QueuedConnection)
+            self.cpupower.errorOccurred.connect(self.show_cpupower_error, type=Qt.QueuedConnection)
+            self.cpupower.start(str(shutil.which("cpupower-gui")))
+            self.cpupower.waitForFinished(1000)
 
-    def thermal_mode_selection(self, checked):
-        """thermal_mode_selection.
+    def show_cpupower_finished(self):
+        if self.cpupower:
+            print("Info: cpupower-gui finished")
+            if self.cpupower.state() != 0:
+                self.kill_process(self.cpupower)
+            self.cpupower = None
 
-        :param checked:
+    def show_cpupower_error(self):
+        if self.cpupower:
+            print("Error: cpupower-gui failed")
+            if self.cpupower.state() != 0:
+                self.kill_process(self.cpupower)
+            self.cpupower = None
+
+    def thermal_mode_selection(self, selected_mode):
+        """thermal_mode_selection. The purpose of this function is to switch the BIOS thermal mode based on the user's
+        input. If the `smbios-thermal-ctl` script is not found, the function prints an error and returns.
+
+        :param selected_mode: the BIOS thermal mode selected
         """
         if self.bios_thermal_control_on:
             if self.p is None:
