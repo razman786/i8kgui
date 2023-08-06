@@ -440,7 +440,8 @@ class I8kGui(QMainWindow):
         self.thermal_checkbox.setCheckState(Qt.CheckState.Unchecked)
         self.switch_thermal_menu()
         print(f"{active_controller} is not available, reverting to {inactive_controller} thermal control")
-        self.thermal_error_dialog('error', f"{active_controller} is not active. Reverting to {inactive_controller} thermal control")
+        self.thermal_error_dialog(
+            'error', f"{active_controller} is not active. Reverting to {inactive_controller} thermal control")
 
     def enable_bios_thermal_control(self):
         """Enable thermal control through BIOS."""
