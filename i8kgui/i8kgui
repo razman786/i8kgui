@@ -151,11 +151,14 @@ class I8kGui(QMainWindow):
         self.load_sys_tray()
 
     def close_app(self):
-        """close_app. Save settings and quit.
+        """close_app. Save settings, stop monitoring and quit.
 
         :param self:
         """
         self.save_settings()
+        if self.monitorTimer.isActive():
+            self.monitorTimer.stop()
+        self.kill_process()
         app.quit()
 
     def thermal_error_dialog(
