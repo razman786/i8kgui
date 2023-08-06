@@ -293,10 +293,12 @@ class I8kGui(QMainWindow):
         always_on = str(self.settings.value('always_on'))
         if always_on and always_on.lower() == 'false':
             self.always_on = False
-            self.always_on_checkbox.setCheckState(Qt.Unchecked)
+            self.always_on_checkbox.setChecked(False)
+            self.always_on_checkbox.setCheckState(Qt.CheckState.Unchecked)
         else:
             self.always_on = True
-            self.always_on_checkbox.setCheckState(Qt.Checked)
+            self.always_on_checkbox.setChecked(True)
+            self.always_on_checkbox.setCheckState(Qt.CheckState.Checked)
 
         # load monitoring interval setting
         self.monitor_interval = int(str(self.settings.value('interval', 1000)))
@@ -305,10 +307,12 @@ class I8kGui(QMainWindow):
         use_cpu_ave_freq = str(self.settings.value('use_cpu_ave_freq'))
         if use_cpu_ave_freq and use_cpu_ave_freq.lower() == 'true':
             self.use_cpu_ave_freq = True
-            self.cpu_ave_freq_checkbox.setCheckState(Qt.Checked)
+            self.cpu_ave_freq_checkbox.setChecked(True)
+            self.cpu_ave_freq_checkbox.setCheckState(Qt.CheckState.Checked)
         else:
             self.use_cpu_ave_freq = False
-            self.cpu_ave_freq_checkbox.setCheckState(Qt.Unchecked)
+            self.cpu_ave_freq_checkbox.setChecked(False)
+            self.cpu_ave_freq_checkbox.setCheckState(Qt.CheckState.Unchecked)
 
         if info := list(self.settings.value('smbios', [])):
             # reconstruct list back into dict preserving order
