@@ -1915,7 +1915,7 @@ class I8kGui(QMainWindow):
         self.read_cpu_gov_info()
         # send fake single-click event as workaround
         if self.tray:
-            self.tray.activated.emit(QSystemTrayIcon.Trigger)
+            self.tray.activated.emit(QSystemTrayIcon.ActivationReason.Trigger)
 
     def update_i8k_ac_power(self):
         """update_i8k_ac_power.
