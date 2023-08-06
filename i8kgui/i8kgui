@@ -580,56 +580,41 @@ class I8kGui(QMainWindow):
 
         # Check AC power supply
         self.power_sysfs = "/sys/class/power_supply/AC/online"
-        if Path(self.power_sysfs).is_file():
+        if check_sysfs(self.power_sysfs, "Sysfs AC power supply", "Sysfs AC power supply"):
             self.power_enabled = True
-            print("Found: Sysfs AC power")
         else:
-            # AMD Dell 5575 power supply
             self.power_sysfs = "/sys/class/power_supply/ACAD/online"
-            if Path(self.power_sysfs).is_file():
-                print("Found: Sysfs ACAD power ")
+            if check_sysfs(self.power_sysfs, "Sysfs ACAD power supply", "Sysfs AC power supply"):
                 self.power_enabled = True
             else:
                 self.power_enabled = False
-                print("Error: Sysfs AC power not found")
 
-        # check scaling governor
+        # Check Scaling Governor
         self.scaling_sysfs = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
-        if Path(self.scaling_sysfs).is_file():
+        if check_sysfs(self.scaling_sysfs, "Sysfs scaling governor", "Sysfs scaling governor not found"):
             self.scaling_enabled = True
-            print("Found: Sysfs scaling governor")
         else:
             self.scaling_enabled = False
-            print("Error: Sysfs scaling governor not found")
 
-        # check RAPL TDP
+        # Check RAPL TDP
         # not available on AMD Dell 5575
         self.tdp = "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw"
-        if Path(self.tdp).is_file():
+        if check_sysfs(self.tdp, "Sysfs RAPL TDP", "Sysfs RAPL TDP not found"):
             self.tdp_enabled = True
-            print("Found: Sysfs RAPL TDP")
+        elif check_sysfs(self.tdp, "Sysfs RAPL TDP alternative", "Sysfs RAPL TDP not found"):
+            self.tdp_enabled = True
         else:
-            self.tdp = "/sys/devices/virtual/powercap/intel-rapl/intel-rapl0:0/constraint_0_max_power_uw"
-            if Path(self.tdp).is_file():
-                self.tdp_enabled = True
-                print("Found: Sysfs RAPL TDP alternative")
-            else:
-                self.tdp_enabled = False
-                print("Error: Sysfs RAPL TDP not found")
+            self.tdp_enabled = False
 
-        # check SMT
+        # Check SMT
         self.ht_sysfs = "/sys/devices/system/cpu/smt/active"
-        if Path(self.ht_sysfs).is_file():
-            print("Found: Sysfs SMT status")
-        else:
-            print("Error: Sysfs SMT status not found")
+        if check_sysfs(self.ht_sysfs, "Sysfs SMT status", "Sysfs SMT status not found"):
+            pass
 
-        # check CPU siblings
+        # Check CPU siblings
         cpu_siblings_sysfs = "/sys/devices/system/cpu/cpu0/topology/thread_siblings_list"
-        if Path(cpu_siblings_sysfs).is_file():
-            print("Found: Sysfs CPU siblings")
-        else:
-            print("Error: Sysfs CPU siblings not found")
+        if check_sysfs(cpu_siblings_sysfs, "Sysfs CPU siblings", "Sysfs CPU siblings not found"):
+            pass
 
         #
         # check CPU coretemps and turbo settings
@@ -907,12 +892,13 @@ class I8kGui(QMainWindow):
         # check that smbios is working
         if self.smbois_ctl.is_file():
             print(f"Found: (SM)BIOS Thermal Control {self.smbois_ctl}")
-            self.p = QProcess()
-            self.p.start("pkexec", [str(thermal_file.resolve()), '--status'])
-            self.p.waitForFinished()
-            smbios_stdout = self.p.readAllStandardOutput()
-            self.p.close()
-            self.p = None
+            subproc = QProcess()
+            subproc.start("pkexec", [str(thermal_file.resolve()), '--status'])
+            subproc.waitForFinished(1000)
+            smbios_stdout = subproc.readAllStandardOutput()
+            if subproc.state() != 0:
+                self.kill_process(subproc)
+            subproc = None
             smbios_stdout = bytes(smbios_stdout).decode("utf8")
             if smbios_stdout.startswith('Status Current Thermal Modes'):
                 split_stdout = smbios_stdout.split('\n')
@@ -938,7 +924,7 @@ class I8kGui(QMainWindow):
                 (Path(self.i8kmon_fan1).is_file()
                     or Path(self.i8kmon_fan2).is_file())
                 and (Path(self.i8kmon_fan1_target).is_file()
-                    or Path(self.i8kmon_fan2_target).is_file())
+                     or Path(self.i8kmon_fan2_target).is_file())
                 and Path(self.i8kmon_temp).is_file()
             )
         )
