@@ -967,36 +967,36 @@ class I8kGui(QMainWindow):
         if op == 'enable':
             self.p = QProcess()
             self.p.readyReadStandardOutput.connect(
-                self.handle_thermal_stdout)
+                self.handle_thermal_stdout, type=Qt.QueuedConnection)
             self.p.readyReadStandardError.connect(
-                self.handle_thermal_stderr)
-            self.p.stateChanged.connect(self.handle_process_state)
+                self.handle_thermal_stderr, type=Qt.QueuedConnection)
+            self.p.stateChanged.connect(self.handle_process_state, type=Qt.QueuedConnection)
             # clean up once complete
-            self.p.finished.connect(self.thermal_process_finished)
+            self.p.finished.connect(self.thermal_process_finished, type=Qt.QueuedConnection)
             self.p.start("pkexec",
                          [str(thermal_file.resolve()), '--enable'])
         # disable bios control and enable i8kmon
         elif op == 'disable':
             self.p = QProcess()
             self.p.readyReadStandardOutput.connect(
-                self.handle_thermal_stdout)
+                self.handle_thermal_stdout, type=Qt.QueuedConnection)
             self.p.readyReadStandardError.connect(
-                self.handle_thermal_stderr)
-            self.p.stateChanged.connect(self.handle_process_state)
+                self.handle_thermal_stderr, type=Qt.QueuedConnection)
+            self.p.stateChanged.connect(self.handle_process_state, type=Qt.QueuedConnection)
             # clean up once complete
-            self.p.finished.connect(self.thermal_process_disable_finished)
+            self.p.finished.connect(self.thermal_process_disable_finished, type=Qt.QueuedConnection)
             self.p.start("pkexec",
                          [str(thermal_file.resolve()), '--disable'])
         # get BIOS controlled thermal mode
         elif op == 'status':
             self.p = QProcess()
             self.p.readyReadStandardOutput.connect(
-                self.handle_thermal_stdout)
+                self.handle_thermal_stdout, type=Qt.QueuedConnection)
             self.p.readyReadStandardError.connect(
-                self.handle_thermal_stderr)
-            self.p.stateChanged.connect(self.handle_process_state)
+                self.handle_thermal_stderr, type=Qt.QueuedConnection)
+            self.p.stateChanged.connect(self.handle_process_state, type=Qt.QueuedConnection)
             # clean up once complete
-            self.p.finished.connect(self.thermal_process_finished)
+            self.p.finished.connect(self.thermal_process_finished, type=Qt.QueuedConnection)
             self.p.start("pkexec",
                          [str(thermal_file.resolve()), '--status'])
 
