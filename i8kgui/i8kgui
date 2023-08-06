@@ -570,8 +570,15 @@ class I8kGui(QMainWindow):
         # check Sysfs interfaces
         #
 
-        # check power
-        # Intel Dell 7950 power supply
+        def check_sysfs(path, found_str, not_found_str):
+            if Path(path).is_file():
+                print(f"Found: {found_str}")
+                return True
+            else:
+                print(f"Error: {not_found_str} not found")
+                return False
+
+        # Check AC power supply
         self.power_sysfs = "/sys/class/power_supply/AC/online"
         if Path(self.power_sysfs).is_file():
             self.power_enabled = True
