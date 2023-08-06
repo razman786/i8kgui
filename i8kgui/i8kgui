@@ -1659,35 +1659,37 @@ class I8kGui(QMainWindow):
                             msecs=10000)
                     return
                 # switch BIOS thermal mode (i.e. performance, balanced, etc)
-                if self.current_thermal_mode != checked.text():
-                    self._set_thermal_mode_selection(checked, thermal_file)
+                if self.current_thermal_mode != selected_mode.text():
+                    self._set_thermal_mode_selection(selected_mode, thermal_file)
         else:
             print("Edit i8kmon config")  # TODO - add i8kmon config updating
 
-    def _set_thermal_mode_selection(self, checked, thermal_file):
-        """_set_thermal_mode_selection.
+    def _set_thermal_mode_selection(self, selected_mode, smbios_ctl_file):
+        """_set_thermal_mode_selection. The purpose of this function is to set the thermal mode by executing `pkexec`
+        with the appropriate arguments. It uses a QProcess to handle the execution of the `pkexec` command
+        and connect the necessary signals to handle the output, errors and state changes.
 
         :param self:
-        :param checked:
-        :param thermal_file:
+        :param selected_mode: the BIOS thermal mode selected
+        :param smbios_ctl_file:
         """
         t_args = "--set-thermal-mode="
         t_args += (
-            self.thermal_modes[checked.text()]
-            if checked.text() in self.thermal_modes
+            self.thermal_modes[selected_mode.text()]
+            if selected_mode.text() in self.thermal_modes
             else 'balanced'
         )
         # Keep a reference to the QProcess (e.g. on self)
         # while it's running.
         self.p = QProcess()
         self.p.readyReadStandardOutput.connect(
-            self.handle_thermal_stdout)
+            self.handle_thermal_stdout, type=Qt.QueuedConnection)
         self.p.readyReadStandardError.connect(
-            self.handle_thermal_stderr)
-        self.p.stateChanged.connect(self.handle_process_state)
+            self.handle_thermal_stderr, type=Qt.QueuedConnection)
+        self.p.stateChanged.connect(self.handle_process_state, type=Qt.QueuedConnection)
         # Clean up once complete.
-        self.p.finished.connect(self.thermal_selection_finished)
-        self.p.start("pkexec", [str(thermal_file.resolve()), t_args])
+        self.p.finished.connect(self.thermal_selection_finished, type=Qt.QueuedConnection)
+        self.p.start("pkexec", [str(smbios_ctl_file.resolve()), t_args])
 
     @Slot()
     def message_clicked(self):
