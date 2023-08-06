@@ -1704,16 +1704,16 @@ class I8kGui(QMainWindow):
 
         :param self:
         """
-        with self.opened_w_error(self.i8kmon_fan1) as (fan1, fan1_err), \
-                self.opened_w_error(self.i8kmon_fan2) as (fan2, fan2_err), \
-                self.opened_w_error(self.i8kmon_fan1_target) as (fan1_target, fan1_target_err), \
-                self.opened_w_error(self.i8kmon_fan2_target) as (fan2_target, fan2_target_err), \
-                self.opened_w_error(self.i8kmon_temp) as (temp, temp_err), \
-                self.opened_w_error(self.cpu_no_turbo) as (no_turbo, no_turbo_err), \
-                self.opened_w_error(self.cpu_min_perf) as (min_perf, min_perf_err), \
-                self.opened_w_error(self.cpu_max_perf) as (max_perf, max_perf_err), \
-                self.opened_w_error(self.cpu_min_scaling) as (min_scaling, min_scaling_err), \
-                self.opened_w_error(self.cpu_max_scaling) as (max_scaling, max_scaling_err):
+        with self.open_sysfs_file(self.i8kmon_fan1) as (fan1), \
+                self.open_sysfs_file(self.i8kmon_fan2) as (fan2), \
+                self.open_sysfs_file(self.i8kmon_fan1_target) as (fan1_target), \
+                self.open_sysfs_file(self.i8kmon_fan2_target) as (fan2_target), \
+                self.open_sysfs_file(self.i8kmon_temp) as (temp), \
+                self.open_sysfs_file(self.cpu_no_turbo) as (no_turbo), \
+                self.open_sysfs_file(self.cpu_min_perf) as (min_perf), \
+                self.open_sysfs_file(self.cpu_max_perf) as (max_perf), \
+                self.open_sysfs_file(self.cpu_min_scaling) as (min_scaling), \
+                self.open_sysfs_file(self.cpu_max_scaling) as (max_scaling):
             i8kmon_fan1 = fan1.readline().strip('\n') if fan1 else "0"
             i8kmon_fan2 = fan2.readline().strip('\n') if fan2 else "0"
             i8kmon_fan1_target = fan1_target.readline().strip('\n') if fan1_target else "0"
