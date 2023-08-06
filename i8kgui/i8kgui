@@ -63,6 +63,8 @@ class I8kGui(QMainWindow):
         self.thermal_control_menu = QMenu("Thermal Control N/A")
         self.cpupower = None
         self.p = None
+        self.p_smbios = None
+        self.p_state_smbios = None
         self.is_i8kmon_active = False
         self.is_dell_fan_control_active = False
         self.is_smbios_active = False
@@ -1042,26 +1044,43 @@ class I8kGui(QMainWindow):
             for item in split_stdout:
                 self.current_thermal_mode_data.append(item)
 
-    def close_process(self):
+    def close_process(self, proc=None):
         """close_process.
 
         :param self:
         """
-        if self.p and self.p.state() != 0:
-            self.p.close()
-        self.p = None
+        if proc is None and self.p:
+            if self.p.state() != 0:
+                with suppress(Exception):
+                    self.p.terminate()
+                    self.p.waitForFinished(1000)
+                    self.p.kill()
+            self.p = None
+        elif proc:
+            if proc.state() != 0:
+                with suppress(Exception):
+                    proc.terminate()
+                    proc.waitForFinished(1000)
+                    proc.kill()
+            proc = None
 
-    def kill_process(self):
+    def kill_process(self, proc=None):
         """kill_process.
 
         :param self:
         """
-        with suppress(Exception):
-            if self.p:
+        if proc is None and self.p:
+            with suppress(Exception):
                 self.p.terminate()
                 self.p.waitForFinished(1000)
                 self.p.kill()
-        self.p = None
+            self.p = None
+        elif proc:
+            with suppress(Exception):
+                proc.terminate()
+                proc.waitForFinished(1000)
+                proc.kill()
+            proc = None
 
     def thermal_selection_finished(self):
         """thermal_selection_finished.
@@ -1341,7 +1360,7 @@ class I8kGui(QMainWindow):
 
         :param self:
         """
-        if self.p is not None:
+        if self.p_smbios is not None:
             return
 
         # find smbios script
@@ -1357,13 +1376,13 @@ class I8kGui(QMainWindow):
                         msecs=10000)
                 return
             # Keep a reference to the QProcess (e.g. on self) while it's running.
-            self.p = QProcess()
-            self.p.readyReadStandardOutput.connect(self.handle_smbios_stdout)
-            self.p.readyReadStandardError.connect(self.handle_smbios_stderr)
-            self.p.stateChanged.connect(self.handle_process_state)
+            self.p_smbios = QProcess()
+            self.p_smbios.readyReadStandardOutput.connect(self.handle_smbios_stdout, type=Qt.QueuedConnection)
+            self.p_smbios.readyReadStandardError.connect(self.handle_smbios_stderr, type=Qt.QueuedConnection)
+            self.p_smbios.stateChanged.connect(self.smbios_handle_process_state, type=Qt.QueuedConnection)
             # Clean up once complete.
-            self.p.finished.connect(self.smbios_process_finished)
-            self.p.start("pkexec", [str(smbios_file.resolve())])
+            self.p_smbios.finished.connect(self.smbios_process_finished, type=Qt.QueuedConnection)
+            self.p_smbios.start("pkexec", [str(smbios_file.resolve())])
         else:
             print("Error: libsmbios is unavailable")
 
@@ -1372,11 +1391,11 @@ class I8kGui(QMainWindow):
 
         :param self:
         """
-        if self.p:
-            data = self.p.readAllStandardError()
+        if self.p_smbios:
+            data = self.p_smbios.readAllStandardError()
             stderr = bytes(data).decode("utf8")
             if 'Request dismissed' in stderr:
-                self.p.finished.emit(1, QProcess.CrashExit)
+                self.p_smbios.finished.emit(1, QProcess.CrashExit)
             else:
                 print(f"Error: handle_smbios_stderr {stderr}")
 
@@ -1385,8 +1404,8 @@ class I8kGui(QMainWindow):
 
         :param self:
         """
-        if self.p:
-            data = self.p.readAllStandardOutput()
+        if self.p_smbios:
+            data = self.p_smbios.readAllStandardOutput()
             stdout = bytes(data).decode("utf8")
             self.smbios_message(stdout)
 
@@ -1402,15 +1421,27 @@ class I8kGui(QMainWindow):
         }
         self.p_state = states[state]
 
+    def smbios_handle_process_state(self, state):
+        """handle_process_state.
+
+        :param state:
+        """
+        states = {
+            QProcess.NotRunning: 'NotRunning',
+            QProcess.Starting: 'Starting',
+            QProcess.Running: 'Running',
+        }
+        self.p_state_smbios = states[state]
+
     def smbios_process_finished(self):
         """smbios_process_finished.
 
         :param self:
         """
-        if self.p and self.p.exitCode() != 0:
-            self.kill_process()
+        if self.p_smbios and self.p_smbios.exitCode() != 0:
+            self.kill_process(self.p_smbios)
         else:
-            self.close_process()
+            self.close_process(self.p_smbios)
             self.process_smbios_data()
 
     def process_smbios_data(self):
