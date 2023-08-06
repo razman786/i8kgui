@@ -1560,11 +1560,11 @@ class I8kGui(QMainWindow):
             if icon.pixmap(QSize(64, 64)).isNull():
                 icon = QIcon('icons/i8kgui_icon.png')
             self.tray.setIcon(icon)
-            self.tray.activated.connect(self.status)
-            self.tray.messageClicked.connect(self.message_clicked)
+            self.tray.activated.connect(self.status, type=Qt.QueuedConnection)
+            self.tray.messageClicked.connect(self.message_clicked, type=Qt.QueuedConnection)
             # workaround because tray activated only works with double click
-            self.tray_menu.aboutToShow.connect(self.monitor)
-            self.tray_menu.aboutToHide.connect(self.stop_monitor)
+            self.tray_menu.aboutToShow.connect(self.monitor, type=Qt.QueuedConnection)
+            self.tray_menu.aboutToHide.connect(self.stop_monitor, type=Qt.QueuedConnection)
             # setup display
             self.tray_menu.addAction(self.cpu_usage)
             self.tray_menu.addAction(self.cpu_temp)
@@ -1583,16 +1583,16 @@ class I8kGui(QMainWindow):
             self.tray_menu.addMenu(self.thermal_control_menu)
             self.thermal_menu_group.setExclusive(True)
             self.thermal_menu_group.triggered.connect(
-                self.thermal_mode_selection)
+                self.thermal_mode_selection, type=Qt.QueuedConnection)
             self.build_thermal_menu()  # menu created based on settings
             self.tray_menu.addSeparator()
             # add info, settings and quit menu items
             action_info = self.tray_menu.addAction("Information")
-            action_info.triggered.connect(self.show_info)
+            action_info.triggered.connect(self.show_info, type=Qt.QueuedConnection)
             action_settings = self.tray_menu.addAction("Settings")
-            action_settings.triggered.connect(self.show_settings)
+            action_settings.triggered.connect(self.show_settings, type=Qt.QueuedConnection)
             action_quit = self.tray_menu.addAction("Quit")
-            action_quit.triggered.connect(self.close_app)
+            action_quit.triggered.connect(self.close_app, type=Qt.QueuedConnection)
 
             self.tray.setContextMenu(self.tray_menu)
             self.tray.setToolTip("i8kgui")
