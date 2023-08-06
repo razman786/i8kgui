@@ -1610,7 +1610,7 @@ class I8kGui(QMainWindow):
         # connect to cpupower-gui if found
         cpupower_file = Path(str(shutil.which("cpupower-gui")))
         if cpupower_file.is_file():
-            self.cpu_governor.triggered.connect(self.show_cpupower)
+            self.cpu_governor.triggered.connect(self.show_cpupower, type=Qt.QueuedConnection)
         # TODO - if not found show message to user to install
 
     def show_cpupower(self):
