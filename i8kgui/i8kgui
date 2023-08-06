@@ -1474,10 +1474,12 @@ class I8kGui(QMainWindow):
         """
         close_button = QPushButton("close", self.info_dialog)
         close_button.setMaximumWidth(100)
-        close_button.clicked.connect(self.close_info_dialog)
+        close_button.clicked.connect(self.close_info_dialog,
+                                     type=Qt.QueuedConnection)
 
         self.smbios_button.setMaximumWidth(250)
-        self.smbios_button.clicked.connect(self.get_smbios_information)
+        self.smbios_button.clicked.connect(self.get_smbios_information,
+                                           type=Qt.QueuedConnection)
 
         f_layout = QFormLayout()
         f_layout.addRow("CPU Model", self.cpu_model)
@@ -1499,15 +1501,8 @@ class I8kGui(QMainWindow):
         self.info_dialog.setLayout(f_layout)
         # set dialog geometry
         self.info_dialog.setWindowTitle("Information")
-        self.info_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
-        self.info_dialog.setMinimumWidth(450)
-        self.info_dialog.setMaximumWidth(600)
-        self.info_dialog.setMaximumHeight(600)
-        center_point = QScreen.availableGeometry(
-            QApplication.primaryScreen()).center()
-        fg = self.info_dialog.frameGeometry()
-        fg.moveCenter(center_point)
-        self.info_dialog.move(fg.topLeft())
+        self.info_dialog.setModal(False)
+        self.info_dialog.adjustSize()
 
     def create_settings_dialog(self):
         """create_settings_dialog.
@@ -2051,10 +2046,17 @@ class I8kGui(QMainWindow):
         if self.i8kmon_ctl:
             with os.popen(self.i8kmon_ctl) as ctl:
                 self._get_i8kctl_info(ctl)
+        center_point = QScreen.availableGeometry(
+            QApplication.primaryScreen()).center()
+        fg = self.info_dialog.frameGeometry()
+        fg.moveCenter(center_point)
+        self.info_dialog.move(fg.topLeft())
         if not self.info_dialog.isVisible():
             self.info_dialog.show()
         self.info_dialog.raise_()
         self.info_dialog.setFocus()
+        pointer = self.cursor()
+        pointer.setPos(center_point)
 
     def _get_i8kctl_info(self, ctl):
         """_get_i8kctl_info.
