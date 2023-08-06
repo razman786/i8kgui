@@ -1512,20 +1512,21 @@ class I8kGui(QMainWindow):
         self.save_button.setMaximumWidth(100)
 
         self.always_on_checkbox.setText("Collect statistics continuously")
-        self.always_on_checkbox.stateChanged.connect(self.always_collect)
+        self.always_on_checkbox.stateChanged.connect(self.always_collect,
+                                                     type=Qt.QueuedConnection)
 
         self.thermal_checkbox.setText("Enable BIOS thermal management")
-        self.thermal_checkbox.stateChanged.connect(self.handle_thermal_control)
+        self.thermal_checkbox.stateChanged.connect(self.handle_thermal_control, type=Qt.QueuedConnection)
 
         self.cpu_ave_freq_checkbox.setText("Display average CPU freq.")
         self.cpu_ave_freq_checkbox.stateChanged.connect(
-            self.enable_ave_cpu_freq)
+            self.enable_ave_cpu_freq, type=Qt.QueuedConnection)
 
         self.interval_input.setValidator(QIntValidator())
         self.interval_input.setMaxLength(6)
         self.interval_input.setText(str(self.monitor_interval))
 
-        self.save_button.clicked.connect(self.save_dialog_settings)
+        self.save_button.clicked.connect(self.save_dialog_settings, type=Qt.QueuedConnection)
         f_layout = QFormLayout()
         f_layout.addRow("(requires password)", self.thermal_checkbox)
         f_layout.addRow(" ", self.always_on_checkbox)
@@ -1538,14 +1539,8 @@ class I8kGui(QMainWindow):
         self.settings_dialog.setLayout(f_layout)
         # set dialog geometry
         self.settings_dialog.setWindowTitle("Settings")
-        self.settings_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
-        self.settings_dialog.setMaximumWidth(400)
-        self.settings_dialog.setMaximumHeight(400)
-        center_point = QScreen.availableGeometry(
-            QApplication.primaryScreen()).center()
-        fg = self.settings_dialog.frameGeometry()
-        fg.moveCenter(center_point)
-        self.settings_dialog.move(fg.topLeft())
+        self.settings_dialog.setModal(False)
+        self.settings_dialog.adjustSize()
 
     def load_sys_tray(self):
         """load_sys_tray.
@@ -2031,10 +2026,17 @@ class I8kGui(QMainWindow):
 
         :param self:
         """
+        center_point = QScreen.availableGeometry(
+            QApplication.primaryScreen()).center()
+        fg = self.settings_dialog.frameGeometry()
+        fg.moveCenter(center_point)
+        self.settings_dialog.move(fg.topLeft())
         if not self.settings_dialog.isVisible():
             self.settings_dialog.show()
         self.settings_dialog.raise_()
         self.settings_dialog.setFocus()
+        pointer = self.cursor()
+        pointer.setPos(center_point)
 
     def show_info(self):
         """show_info.
