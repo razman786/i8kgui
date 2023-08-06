@@ -109,7 +109,8 @@ class I8kGui(QMainWindow):
         # load settings
         self.load_settings()
         self.monitorTimer = QTimer(self)
-        self.monitorTimer.timeout.connect(self.refresh_monitor)
+        self.monitorTimer.timeout.connect(self.refresh_monitor,
+                                          type=Qt.QueuedConnection)
         self.monitorTimer.setInterval(self.monitor_interval)
         self.create_settings_dialog()
         self.create_info_dialog()
