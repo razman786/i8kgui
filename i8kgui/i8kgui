@@ -2076,8 +2076,8 @@ class I8kGui(QMainWindow):
         self.button_status.setText(split_line[9].strip())
 
     @contextmanager
-    def opened_w_error(self, f_name, mode="r"):
-        """opened_w_error. A context manager for 'with' for opening a possible missing file.
+    def open_sysfs_file(self, f_name, mode="r"):
+        """open_sysfs_file. A context manager for 'with' for opening a possible missing file in Sysfs.
 
         :param self:
         :param f_name:
@@ -2086,10 +2086,11 @@ class I8kGui(QMainWindow):
         try:
             f = open(f_name, mode)
         except IOError as err:
-            yield None, err
+            print(f"Warn: Sysfs IOError {err}")
+            yield None
         else:
             try:
-                yield f, None
+                yield f
             finally:
                 f.close()
 
