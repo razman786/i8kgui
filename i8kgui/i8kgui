@@ -455,7 +455,7 @@ class I8kGui(QMainWindow):
 
         :param checked:
         """
-        if checked == Qt.Checked:
+        if checked != 0:
             self.monitor_interval = int(self.interval_input.text())
             self.monitorTimer.setInterval(self.monitor_interval)
             self.always_on = True
@@ -472,7 +472,7 @@ class I8kGui(QMainWindow):
 
         :param checked:
         """
-        self.use_cpu_ave_freq = checked == Qt.Checked
+        self.use_cpu_ave_freq = checked != 0
 
     def save_dialog_settings(self):
         """save_dialog_settings."""
