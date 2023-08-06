@@ -2137,4 +2137,4 @@ if __name__ == '__main__':
     app.setQuitOnLastWindowClosed(False)
     tray = I8kGui()
 
-    app.exec()
+    app.exec_()
