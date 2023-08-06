@@ -104,22 +104,15 @@ class I8kGui(QMainWindow):
         self.right_fan_thermal_menu_item = QAction("")
         self.right_fan_thermal_menu_item.setCheckable(False)
         self.i8k_info = {}
-        # check dependencies
-        self.check_prerequisites()
-        # load settings
-        self.load_settings()
         self.monitorTimer = QTimer(self)
         self.monitorTimer.timeout.connect(self.refresh_monitor,
                                           type=Qt.QueuedConnection)
         self.monitorTimer.setInterval(self.monitor_interval)
-        self.create_settings_dialog()
-        self.create_info_dialog()
         self.tray = None
         self.first_load = True
         self.cpu_temp_sensors = []
         self.cpu_sysfs_siblings = []
         self.cpu_siblings = {}
-        self.detect_cpu()
         self.cpu_usage = QAction("CPU Usage:\t")
         self.cpu_mhz = QAction("CPU MHz:\t")
         self.cpu_details = QMenu("Per CPU Core\t")
@@ -136,13 +129,25 @@ class I8kGui(QMainWindow):
         self.max_cpu_turbo.setCheckable(False)
         self.cpu_freq_list = []
         self.cpu_curr_freqs = []
-        self.build_cpu_menu()
         self.cpu_governor = QAction("CPU Governor:\t")
         self.cpu_temp = QAction("CPU Temp:\t")
         self.left_fan_rpm = QAction("Left Fan:\t")
         self.right_fan_rpm = QAction("Right Fan:\t")
         self.left_fan_status = QAction("Left Fan Mode:\t")
         self.right_fan_status = QAction("Right Fan Mode:\t")
+        # check dependencies
+        self.check_prerequisites()
+        # load settings
+        self.load_settings()
+        # create settings window
+        self.create_settings_dialog()
+        # create information window
+        self.create_info_dialog()
+        # detect CPU architecture
+        self.detect_cpu()
+        # build CPU sub menu
+        self.build_cpu_menu()
+        # load i8kgui system tray
         self.load_sys_tray()
 
     def close_app(self):
