@@ -58,7 +58,7 @@ class I8kGui(QMainWindow):
         self.coretemps_sysfs = []
         self.is_intel_cpu = True
         self.cpu_num = psutil.cpu_count()
-        self.tray_menu = QMenu()
+        self.tray_menu = QMenu(self)
         self.thermal_menu_group = QActionGroup(self.tray_menu)
         self.thermal_control_menu = QMenu("Thermal Control N/A")
         self.p = None
