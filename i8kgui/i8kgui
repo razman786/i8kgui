@@ -82,8 +82,8 @@ class I8kGui(QMainWindow):
         self.thermal_checkbox = QCheckBox()
         self.cpu_ave_freq_checkbox = QCheckBox()
         self.interval_input = QLineEdit()
-        self.settings_dialog = QDialog()
-        self.info_dialog = QDialog()
+        self.settings_dialog = QDialog(self)
+        self.info_dialog = QDialog(self)
         self.save_button = QPushButton("Save", self.settings_dialog)
         self.smbios_button = QPushButton("SMBIOS Information",
                                          self.info_dialog)
