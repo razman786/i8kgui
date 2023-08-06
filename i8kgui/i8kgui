@@ -14,21 +14,23 @@
 # You should have received a copy of the GNU General Public License along with
 # this program. If not, see <https://www.gnu.org/licenses/>.
 #
-from pathlib import Path
-from contextlib import contextmanager
-from contextlib import suppress
 import os
 import glob
 import shutil
 import warnings
 
-from PySide6 import QtCore
-from PySide6.QtCore import QProcess, QSettings, QSize, Slot, QTimer
-from PySide6.QtGui import (QAction, QActionGroup, QColor, QIcon, QIntValidator, QPalette, QScreen, Qt)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFormLayout, QLabel, QLineEdit, QMainWindow, QMenu,
-                               QMessageBox, QPushButton, QSystemTrayIcon)
 import cpuinfo
 import psutil
+
+from pathlib import Path
+from contextlib import contextmanager, suppress
+
+from PySide6 import QtCore
+from PySide6.QtCore import Qt, QProcess, QSettings, QSize, Slot, QTimer
+from PySide6.QtGui import QAction, QActionGroup, QColor, QIcon, QIntValidator, QPalette, QScreen
+from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFormLayout, QLabel, QLineEdit, QMainWindow, QMenu,
+                               QMessageBox, QPushButton, QSystemTrayIcon)
+
 
 warnings.filterwarnings("ignore")
 
