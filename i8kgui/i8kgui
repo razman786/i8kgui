@@ -509,9 +509,6 @@ class I8kGui(QMainWindow):
 
         :param self:
         """
-        if self.p is not None:
-            return
-
         active_services = []
         self._is_systemd_service_active(
             'i8kmon.service',
@@ -539,14 +536,15 @@ class I8kGui(QMainWindow):
         # check which system services are active.
         # keep a reference to the QProcess (e.g. on self)
         # while it's running.
-        self.p = QProcess()
-        self.p.start("systemctl", ['is-enabled', service])
-        self.p.waitForFinished()
-        result_systemd = self.p.readLine()
+        subproc = QProcess()
+        subproc.start("systemctl", ['is-enabled', service])
+        subproc.waitForFinished(1000)
+        result_systemd = subproc.readLine()
         output_systemd = bytes(result_systemd).decode("utf8")
         is_service_active = output_systemd.strip('\n')
-        self.p.close()
-        self.p = None
+        if subproc.state != 0:
+            self.kill_process(subproc)
+        subproc = None
         # check if systemd service is enabled,
         if is_service_active == 'enabled':
             active_services.append(service)
