@@ -81,7 +81,7 @@ finished() {
 	echo "**** sudo systemctl enable dell-bios-fan-control.service; sudo systemctl enable i8kmon.service"
   echo "****"
   echo "**** (Optional) Please configure undervolt. An example for a XPS 7590 (i7 CPU):"
-	echo "**** sudo /root/.local/bin/undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100"
+	echo "**** sudo /usr/local/bin/undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100"
   echo "***************************************************************************************************************"
   echo ""
 	exit 0
@@ -168,7 +168,7 @@ check_ubuntu_version () {
   fi
 
   # check if Ubuntu 20.04 or 22.04, add versions as needed
-  if [[ $distro_version == 2004 ]] || [[ $distro_version == 2204 ]]
+  if [[ $distro_version == 2004 ]] || [[ $distro_version == 2204 ]] || [[ $distro_version == 2304 ]]
   then
     echo "==== Installer has detected Linux distribution as $distro_name $distro_version ===="
     printf "==== Installer has detected Linux distribution as $distro_name $distro_version ====\n"
@@ -189,7 +189,7 @@ install_pip_depends () {
     echo "==== Installer did not find pip3, installing..."
     printf "==== Installer did not find pip3 installing...\n"
     $sudo_runner $apt_runner python3-setuptools python3-pip 2>>$error_file || exception
-    pip3 install -U pip setuptools wheel --user
+    pip3 install -U pip setuptools wheel --user --break-system-packages
   fi
 }
 
@@ -264,14 +264,14 @@ install_undervolt () {
   # install optional dependencies
   echo "==== Installing optional dependencies undervolt..."
   printf "==== Installing optional dependencies undervolt...\n"
-  $sudo_runner pip3 install undervolt 2>>$error_file || exception
+  $sudo_runner pip3 install undervolt --break-system-packages 2>>$error_file || exception
 }
 
 install_i8kgui () {
   # install i8kgui
   echo "==== Installing i8kgui..."
   printf "==== Installing i8kgui...\n"
-  $sudo_runner pip3 install . --prefix=/usr 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+  pip3 install . --user --break-system-packages 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
 }
 
 # install i8kgui and dependencies
