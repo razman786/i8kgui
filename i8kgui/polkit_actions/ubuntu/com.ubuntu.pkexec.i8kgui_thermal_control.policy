@@ -12,7 +12,7 @@
       <allow_inactive>yes</allow_inactive>
       <allow_active>yes</allow_active>
     </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/i8kgui_thermal_control</annotate>
+    <annotate key="org.freedesktop.policykit.exec.path">I8KGUI_THERMAL_PATH/.local/bin/i8kgui_thermal_control</annotate>
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 

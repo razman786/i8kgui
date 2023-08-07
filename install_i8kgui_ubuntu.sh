@@ -267,6 +267,14 @@ install_undervolt () {
   $sudo_runner pip3 install undervolt --break-system-packages 2>>$error_file || exception
 }
 
+install_polkit_actions () {
+  # install polkit files
+  echo "==== Installing polkit actions..."
+  printf "==== Installing polkit actions...\n"
+  sed -i "s@I8KGUI_THERMAL_PATH@$HOME@" i8kgui/polkit_actions/ubuntu/com.ubuntu.pkexec.i8kgui_thermal_control.policy
+  $sudo_runner cp i8kgui/polkit_actions/ubuntu/* /usr/share/polkit-1/actions/ 2>>$error_file || exception
+}
+
 install_i8kgui () {
   # install i8kgui
   echo "==== Installing i8kgui..."
@@ -285,11 +293,13 @@ then
   install_libsmbios
   install_cpu_power_gui
   install_undervolt
+  install_polkit_actions
 elif [[ $install_type == "normal" ]]
 then
   install_dell_bios_fix
   install_i8kutils
   install_libsmbios
+  install_polkit_actions
 elif [[ $install_type == "mininum" ]]
 then
   install_i8kutils
@@ -297,18 +307,22 @@ elif [[ $install_type == "bios-fix" ]]
 then
   install_dell_bios_fix
   install_i8kutils
+  install_polkit_actions
 elif [[ $install_type == "smbios" ]]
 then
   install_i8kutils
   install_libsmbios
+  install_polkit_actions
 elif [[ $install_type == "power" ]]
 then
   install_dell_bios_fix
   install_i8kutils
   install_libsmbios
   install_cpu_power_gui
+  install_polkit_actions
 fi
 # install i8kgui
 install_i8kgui
+
 
 # EOF
