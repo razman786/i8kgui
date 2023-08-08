@@ -46,10 +46,10 @@ CPU temperature and fan speeds. It also supports thermal management using
 
 ### Automated Installation (Recommended)
 
-This version has only been tested on Ubuntu 20.04 (it should also work on 22.04)
+This version has only been tested on Ubuntu 20.04/23.04 (it should also work on 22.04)
 and with a Dell laptop (XPS 7590). The installation script undertakes a
 system-wide installation with all optional components (i.e. `cpupower-gui` and
-`undervolt`). Please see below for other install options.
+`undervolt`). i8kgui itself is installed within a users `$HOME` directory. Please see below for other install options.
 
 ```
 git clone https://github.com/razman786/i8kgui
@@ -60,13 +60,13 @@ cd i8kgui
 #### Automated Installation Options
 
 Install option | i8kutils | Dell BIOS fan control | libsmbios | cpupower-gui | undervolt
-:---|:---:|:---:|:---:|:---:|:---:
-`-all` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:
-`-norm` | :white_check_mark: | :white_check_mark: | :white_check_mark: |  |
-`-min` | :white_check_mark: | | |  |
-`-fix` | :white_check_mark: | :white_check_mark: | |  |
-`-smbios` | :white_check_mark: | | :white_check_mark: |  |
-`-power` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+:---:|:---:|:---:|:---:|:---:|:---:|
+`-all` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | 
+`-norm` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | |
+`-min` | :heavy_check_mark: |
+`-fix` | :heavy_check_mark: | :heavy_check_mark: |
+`-smbios` | :heavy_check_mark: | | :heavy_check_mark: |
+`-power` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | 
 
 See `./install_i8kgui_ubuntu.sh -h` for usage information.
 
@@ -74,7 +74,7 @@ See `./install_i8kgui_ubuntu.sh -h` for usage information.
 
 #### Prerequisites
 
-This guide has only been tested on Ubuntu 20.04 and with a Dell XPS laptop.
+This guide has only been tested on Ubuntu 20.04/23.04 and with a Dell XPS laptop.
 
 The [dell-smm-hwmon](https://www.kernel.org/doc/html/latest/hwmon/dell-smm-hwmon.html)
 kernel module is required for basic functionality.
@@ -120,7 +120,7 @@ sudo systemctl enable dell-bios-fan-control.service
 ##### libsmbios (optional)
 
 If supported by your system, libsmbios will allow BIOS thermal modes to be changed, amongst other
-features. On Ubuntu 20.04, please install the following package to interface with (SM)BIOS
+features. On Ubuntu, please install the following package to interface with (SM)BIOS
 information:
 
 ```
@@ -129,40 +129,78 @@ sudo apt install python3-libsmbios
 
 ##### cpupower-gui (optional)
 
-On Ubuntu 20.04, install the following optional package to change the CPU
+On Ubuntu, install the following optional package to change the CPU
 Governor:
 
 ```
 sudo apt install cpupower-gui
 ```
 
+##### polkit actions (optional)
+
+The polkit action files will allow thermal controls to be changed without
+requiring a user password. If your installation of `i8kgui` is frequently asking
+for a password, please do the following:
+
+Using a text editor, change the `I8KGUI_THERMAL_PATH` placeholder in the 
+`i8kgui/polkit_actions/ubuntu/com.ubuntu.pkexec.i8kgui_thermal_control.policy` file to the correct location, i.e. `/home/someuser`
+
+To manually install the polkit action files, do the following:
+```
+sudo cp i8kgui/polkit_actions/ubuntu/* /usr/share/polkit-1/actions
+```
+
+Please note that, the installation script by default will use the polkit action files for
+Ubuntu. Polkit action files for Manjaro Linux (tested with version 22.1.3) are
+located in `i8kgui/polkit_actions/manjaro`. 
+
 #### i8kgui Installation
 
-##### System-wide with polkit actions (Recommended)
+###### Using PyPI
+
+On Ubuntu 20.04 and 22.04 use the following:
+```
+pip3 install i8kgui --user
+```
+
+For Ubuntu 23.04 the command needs to be altered:
+```
+pip3 install i8kgui --user --break-system-packages
+```
+
+###### Using Git
 
 ```
 git clone https://github.com/razman786/i8kgui
-sudo python3 setup.py install
+```
+On Ubuntu 20.04 and 22.04 use the following:
+```
+pip3 install . --user
 ```
 
-Please note that the default installation will use the polkit action files for
-Ubuntu. Polkit action files for Manjaro Linux (tested with version 22.1.3) are
-located in `i8kgui/polkit_actions/manjaro`. For example, to manually install the
-polkit action files, do the following `sudo cp i8kgui/polkit_actions/ubuntu/* /usr/share/polkit-1/actions`
-
-##### Stable
-
+For Ubuntu 23.04 the command is as follows:
 ```
-git clone https://github.com/razman786/i8kgui
-python3 setup.py install --user
+pip3 install . --user --break-system-packages
 ```
 
-##### Development
+##### Development version
 
 ```
 git clone https://github.com/razman786/i8kgui
 git checkout development && git pull
-python3 setup.py install --user
+pip3 install . --user
+```
+
+#### Uninstall i8kgui
+
+For Ubuntu 20.04 and 22.04 use the following:
+```
+pip3 uninstall i8kgui
+```
+
+For Ubuntu 23.04 use the following:
+```
+pip3 uninstall i8kgui --break-system-packages
 ```
 
 ## Usage

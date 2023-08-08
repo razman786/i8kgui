@@ -35,11 +35,11 @@ echo() {
 }
 
 echo ""
-echo "==== i8kgui v0.8.3 - Ubuntu install script ===="
+echo "==== i8kgui v0.8.4 - Ubuntu install script ===="
 echo "==== Log file: $log_file ===="
 echo "==== Error log: $error_file ===="
 echo ""
-printf "==== i8kgui v0.8.3 - Ubuntu install script ====\n"
+printf "==== i8kgui v0.8.4 - Ubuntu install script ====\n"
 
 # sudo runner by default
 sudo_runner="sudo"
@@ -81,7 +81,7 @@ finished() {
 	echo "**** sudo systemctl enable dell-bios-fan-control.service; sudo systemctl enable i8kmon.service"
   echo "****"
   echo "**** (Optional) Please configure undervolt. An example for a XPS 7590 (i7 CPU):"
-	echo "**** sudo /root/.local/bin/undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100"
+	echo "**** sudo /usr/local/bin/undervolt -v --gpu -0 --core -121 --cache -121 --uncore -121 --analogio 0 --temp 100"
   echo "***************************************************************************************************************"
   echo ""
 	exit 0
@@ -168,7 +168,7 @@ check_ubuntu_version () {
   fi
 
   # check if Ubuntu 20.04 or 22.04, add versions as needed
-  if [[ $distro_version == 2004 ]] || [[ $distro_version == 2204 ]]
+  if [[ $distro_version == 2004 ]] || [[ $distro_version == 2204 ]] || [[ $distro_version == 2304 ]]
   then
     echo "==== Installer has detected Linux distribution as $distro_name $distro_version ===="
     printf "==== Installer has detected Linux distribution as $distro_name $distro_version ====\n"
@@ -189,7 +189,12 @@ install_pip_depends () {
     echo "==== Installer did not find pip3, installing..."
     printf "==== Installer did not find pip3 installing...\n"
     $sudo_runner $apt_runner python3-setuptools python3-pip 2>>$error_file || exception
-    pip3 install -U pip setuptools wheel --user
+    if [[ $distro_version == 2304 ]]
+    then
+      pip3 install -U pip setuptools wheel --user --break-system-packages
+    else
+      pip3 install -U pip setuptools wheel --user
+    fi
   fi
 }
 
@@ -264,14 +269,32 @@ install_undervolt () {
   # install optional dependencies
   echo "==== Installing optional dependencies undervolt..."
   printf "==== Installing optional dependencies undervolt...\n"
-  $sudo_runner pip3 install undervolt 2>>$error_file || exception
+  if [[ $distro_version == 2304 ]]
+  then
+    $sudo_runner pip3 install undervolt --break-system-packages 2>>$error_file || exception
+  else
+    $sudo_runner pip3 install undervolt 2>>$error_file || exception
+  fi
+}
+
+install_polkit_actions () {
+  # install polkit files
+  echo "==== Installing polkit actions..."
+  printf "==== Installing polkit actions...\n"
+  sed -i "s@I8KGUI_THERMAL_PATH@$HOME@" i8kgui/polkit_actions/ubuntu/com.ubuntu.pkexec.i8kgui_thermal_control.policy
+  $sudo_runner cp i8kgui/polkit_actions/ubuntu/* /usr/share/polkit-1/actions/ 2>>$error_file || exception
 }
 
 install_i8kgui () {
   # install i8kgui
   echo "==== Installing i8kgui..."
   printf "==== Installing i8kgui...\n"
-  $sudo_runner python3 setup.py install 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+  if [[ $distro_version == 2304 ]]
+  then
+    pip3 install . --user --break-system-packages 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+  else
+    pip3 install . --user 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+  fi
 }
 
 # install i8kgui and dependencies
@@ -285,11 +308,13 @@ then
   install_libsmbios
   install_cpu_power_gui
   install_undervolt
+  install_polkit_actions
 elif [[ $install_type == "normal" ]]
 then
   install_dell_bios_fix
   install_i8kutils
   install_libsmbios
+  install_polkit_actions
 elif [[ $install_type == "mininum" ]]
 then
   install_i8kutils
@@ -297,18 +322,22 @@ elif [[ $install_type == "bios-fix" ]]
 then
   install_dell_bios_fix
   install_i8kutils
+  install_polkit_actions
 elif [[ $install_type == "smbios" ]]
 then
   install_i8kutils
   install_libsmbios
+  install_polkit_actions
 elif [[ $install_type == "power" ]]
 then
   install_dell_bios_fix
   install_i8kutils
   install_libsmbios
   install_cpu_power_gui
+  install_polkit_actions
 fi
 # install i8kgui
 install_i8kgui
+
 
 # EOF
