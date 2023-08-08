@@ -1,7 +1,7 @@
 from setuptools import setup
 from pathlib import Path
 
-__version__ = "0.8.4-dev"
+__version__ = "0.8.4"
 
 requirements = [
     'PySide6',
