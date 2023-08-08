@@ -60,13 +60,13 @@ cd i8kgui
 #### Automated Installation Options
 
 Install option | i8kutils | Dell BIOS fan control | libsmbios | cpupower-gui | undervolt
-:---:|:---:|:---:|:---:|:---:|:---:
-`-all` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
-`-norm` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |  |
-`-min` | :heavy_check_mark: | | |  |
-`-fix` | :heavy_check_mark: | :heavy_check_mark: | |  |
-`-smbios` | :heavy_check_mark: | | :heavy_check_mark: |  |
-`-power` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+:---:|:---:|:---:|:---:|:---:|:---:|
+`-all` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | 
+`-norm` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | |
+`-min` | :heavy_check_mark: |
+`-fix` | :heavy_check_mark: | :heavy_check_mark: |
+`-smbios` | :heavy_check_mark: | | :heavy_check_mark: |
+`-power` | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | 
 
 See `./install_i8kgui_ubuntu.sh -h` for usage information.
 
