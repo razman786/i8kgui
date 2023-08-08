@@ -175,7 +175,7 @@ class I8kGui(QMainWindow):
         # displays an error dialog when services are out of sync
         error_dialog = QMessageBox(QMessageBox.Icon.Critical, "i8kgui", msg)
         error_dialog.setText(msg)
-        button = error_dialog.exec()
+        button = error_dialog.open()
         if button == QMessageBox.Ok:
             # disable bios thermal control (i.e. default is i8kmon)
             if cmd in ['enable', 'disable']:
