@@ -189,7 +189,12 @@ install_pip_depends () {
     echo "==== Installer did not find pip3, installing..."
     printf "==== Installer did not find pip3 installing...\n"
     $sudo_runner $apt_runner python3-setuptools python3-pip 2>>$error_file || exception
-    pip3 install -U pip setuptools wheel --user --break-system-packages
+    if [[ $distro_version == 2304 ]]
+    then
+      pip3 install -U pip setuptools wheel --user --break-system-packages
+    else
+      pip3 install -U pip setuptools wheel --user
+    fi
   fi
 }
 
@@ -264,7 +269,12 @@ install_undervolt () {
   # install optional dependencies
   echo "==== Installing optional dependencies undervolt..."
   printf "==== Installing optional dependencies undervolt...\n"
-  $sudo_runner pip3 install undervolt --break-system-packages 2>>$error_file || exception
+  if [[ $distro_version == 2304 ]]
+  then
+    $sudo_runner pip3 install undervolt --break-system-packages 2>>$error_file || exception
+  else
+    $sudo_runner pip3 install undervolt 2>>$error_file || exception
+  fi
 }
 
 install_polkit_actions () {
@@ -279,7 +289,12 @@ install_i8kgui () {
   # install i8kgui
   echo "==== Installing i8kgui..."
   printf "==== Installing i8kgui...\n"
-  pip3 install . --user --break-system-packages 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+  if [[ $distro_version == 2304 ]]
+  then
+    pip3 install . --user --break-system-packages 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+  else
+    pip3 install . --user 1>>$log_file 2>>$error_file && finished && printf "==== i8kgui installation complete! \o/ ====\n" || exception
+  fi
 }
 
 # install i8kgui and dependencies
